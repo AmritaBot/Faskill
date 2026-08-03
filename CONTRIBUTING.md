@@ -41,7 +41,7 @@ We are committed to providing a welcoming and inclusive environment for all cont
 
 ### Finding Ways to Contribute
 
-1. **Browse open issues**: Check the [issue tracker](https://github.com/maxvaega/faskill/issues) for bugs and feature requests
+1. **Browse open issues**: Check the [issue tracker](https://github.com/AmritaBot/faskill/issues) for bugs and feature requests
 2. **Documentation**: Help improve documentation, examples, or tutorials
 3. **Bug fixes**: Fix bugs and submit pull requests
 4. **New features**: Propose and implement new features (discuss first in an issue)
@@ -275,7 +275,7 @@ git push origin feature/your-feature-name
 
 ### 2. Create Pull Request
 
-1. Go to the [faskill repository](https://github.com/maxvaega/faskill)
+1. Go to the [faskill repository](https://github.com/AmritaBot/faskill)
 2. Click "New Pull Request"
 3. Select your fork and branch
 4. Fill out the PR template with:
@@ -426,7 +426,7 @@ def test_memory():
 
 ## Questions?
 
-- Open a [discussion](https://github.com/maxvaega/faskill/discussions)
+- Open a [discussion](https://github.com/AmritaBot/faskill/discussions)
 
 ## License
 

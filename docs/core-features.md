@@ -4,49 +4,87 @@ This document provides detailed information about faskill's core features and ad
 
 ## Table of Contents
 
+- [Multi-Source Discovery](#multi-source-discovery)
 - [Script Execution](#script-execution)
 - [Caching System](#caching-system)
-- [Multi-Source Discovery](#multi-source-discovery)
 - [Common Usage Patterns](#common-usage-patterns)
 - [Debugging Tips](#debugging-tips)
 - [Performance Tips](#performance-tips)
 
 ---
 
+## Multi-Source Discovery
+
+faskill discovers skills from directories you configure. Each directory is treated as a **CUSTOM** source by default, unless it contains a plugin manifest (`.claude-plugin/plugin.json`), in which case it's detected as a **PLUGIN** source with higher priority.
+
+### Basic setup
+
+```python
+from faskill import create_context
+
+ctx = create_context(skill_dirs=["./my-skills", "./shared-skills"])
+ctx.discover()
+```
+
+### Adding sources after construction
+
+```python
+ctx = create_context()
+ctx.add_source("./my-skills")
+ctx.add_source("./plugins/pdf-tools")   # auto-detected as PLUGIN if manifest exists
+ctx.discover()
+```
+
+### Plugin detection
+
+Any directory containing `.claude-plugin/plugin.json` is automatically treated as a PLUGIN source with priority 10. Plain directories are CUSTOM with priority 5. Plugin skills are also available via qualified names (`plugin-name:skill-name`).
+
+```python
+# Access a skill from a specific plugin
+skill = ctx.get_skill("pdf-tools:extractor")
+```
+
+### Conflict resolution
+
+When two sources define a skill with the same name, the higher-priority source wins. A warning is logged identifying which version was kept and which was ignored. Use qualified names to access shadowed plugin skills.
+
+---
+
 ## Script Execution
 
-Skills can include executable scripts for deterministic operations, combining AI reasoning with code execution. Scripts are automatically detected and can be executed with security controls.
+Skills can include executable scripts for deterministic operations. Scripts are automatically detected and executed with security controls.
 
-### Supported Script Types
+### Supported Types
 
-- **Python** (`.py`) - Python 3.x scripts
-- **Shell** (`.sh`) - Bash shell scripts
-- **JavaScript** (`.js`) - Node.js scripts
-- **Ruby** (`.rb`) - Ruby scripts
-- **Perl** (`.pl`) - Perl scripts
-- **Windows** (`.bat`, `.cmd`, `.ps1`) - Batch and PowerShell scripts
+| Extension | Interpreter |
+|-----------|-------------|
+| `.py` | `python3` |
+| `.sh` | `bash` |
+| `.js` | `node` |
+| `.rb` | `ruby` |
+| `.pl` | `perl` |
+| `.bat`, `.cmd` | `cmd` |
+| `.ps1` | `powershell` |
 
 ### Basic Script Execution
 
 ```python
-from faskill import SkillManager
+from faskill import create_context
 
-manager = SkillManager()
-manager.discover()
+ctx = create_context(skill_dirs=["./my-skills"])
+ctx.discover()
 
-# Execute a script from a skill
-result = manager.execute_skill_script(
+result = ctx.execute_skill_script(
     skill_name="pdf-extractor",
     script_name="extract",
     arguments={"file": "document.pdf", "pages": "all"},
-    timeout=30  # optional, defaults to 30 seconds
+    timeout=30,
 )
 
 if result.success:
-    print(result.stdout)  # Script output
+    print(result.stdout)
 else:
-    print(f"Error: {result.stderr}")
-    print(f"Exit code: {result.exit_code}")
+    print(f"Error ({result.exit_code}): {result.stderr}")
 ```
 
 ### Script Directory Structure
@@ -65,68 +103,49 @@ my-skill/
 
 ### Script Input/Output
 
-Scripts receive arguments as JSON via stdin and should output results to stdout.
-
-**Important**: All parameter names are **automatically normalized to lowercase** by the core `execute_skill_script` method. This ensures consistent handling across all framework integrations (LangChain, LlamaIndex, CrewAI, etc.), regardless of how LLMs or developers capitalize parameter names.
-
-**Best Practice**: Always use lowercase parameter names in your scripts:
+Scripts receive arguments as JSON via stdin and output results to stdout. All parameter names are automatically normalized to lowercase.
 
 ```python
 #!/usr/bin/env python3
 """Extract data from PDF file."""
-import sys
-import json
+import sys, json
 
-# Read arguments from stdin
 args = json.load(sys.stdin)
 
-# ✅ Use lowercase parameter names for compatibility
+# Use lowercase parameter names (normalized automatically)
 file_path = args.get('file_path', 'document.pdf')
 page_range = args.get('page_range', 'all')
 
-# Process data
 result = {"extracted_text": "..."}
-
-# Output JSON to stdout
 print(json.dumps(result))
 ```
 
-**Example**: If an LLM generates `{'File_Path': 'doc.pdf', 'Page_Range': '1-5'}`, faskill automatically converts it to `{'file_path': 'doc.pdf', 'page_range': '1-5'}` before passing to your script. This normalization happens in the core manager, benefiting all framework integrations.
-
 ### Environment Variables
 
-Scripts automatically receive these environment variables:
+Scripts automatically receive:
 
-- `SKILL_NAME` - Name of the parent skill
-- `SKILL_BASE_DIR` - Absolute path to skill directory
-- `SKILL_VERSION` - Skill version from metadata
-- `faskill_VERSION` - Current faskill version
-
-```python
-import os
-
-skill_name = os.environ['SKILL_NAME']
-skill_dir = os.environ['SKILL_BASE_DIR']
-```
+- `SKILL_NAME` — parent skill name
+- `SKILL_BASE_DIR` — absolute path to skill directory
+- `SKILL_VERSION` — version from metadata
+- `FASKILL_VERSION` — current faskill version
 
 ### Error Handling
 
 ```python
-from faskill.core.exceptions import (
+from faskill import (
     ScriptNotFoundError,
     InterpreterNotFoundError,
     PathSecurityError,
-    ToolIDValidationError
 )
 
 try:
-    result = manager.execute_skill_script(
+    result = ctx.execute_skill_script(
         skill_name="my-skill",
         script_name="process",
-        arguments={"data": [1, 2, 3]}
+        arguments={"data": [1, 2, 3]},
     )
 except ScriptNotFoundError:
-    print("Script not found in skill")
+    print("Script not found")
 except InterpreterNotFoundError:
     print("Required interpreter not available")
 except PathSecurityError:
@@ -135,108 +154,58 @@ except PathSecurityError:
 
 ### Execution Result Properties
 
-The `ScriptExecutionResult` object provides detailed execution information:
-
 ```python
-result = manager.execute_skill_script(...)
-
-result.exit_code          # Process exit code (0 = success)
+result.exit_code          # 0 = success
 result.success            # True if exit_code == 0
-result.stdout             # Captured standard output
-result.stderr             # Captured standard error
-result.execution_time_ms  # Execution duration in milliseconds
-result.timeout            # True if script was killed by timeout
+result.stdout             # Captured stdout
+result.stderr             # Captured stderr
+result.execution_time_ms  # Duration in milliseconds
+result.timeout            # True if killed by timeout
 result.signaled           # True if terminated by signal
-result.signal             # Signal name (e.g., 'SIGSEGV')
+result.signal             # Signal name (e.g. SIGSEGV)
 result.stdout_truncated   # True if output exceeded 10MB
 result.stderr_truncated   # True if stderr exceeded 10MB
 ```
-
-### Examples
-
-Complete working examples available in `examples/`:
-
-- **examples/script_execution.py** - Basic execution, error handling, timeouts
-- **examples/langchain_agent.py** - LangChain integration with script tools
-- **examples/skills/pdf-extractor/** - Real-world skill with multiple scripts
 
 ---
 
 ## Caching System
 
-### Performance Note ⚡
+faskill uses an LRU cache backed by `aiologic.Lock`, which safely supports both sync and async access without `asyncio.run()` bridges. Repeated invocations are **up to 25x faster**.
 
-With v0.4's advanced caching, repeated skill invocations are **up to 25x faster**:
-
-- **First invocation**: ~10-25ms (loads from disk)
-- **Cached invocations**: <1ms (memory lookup)
-- **Automatic**: No code changes needed, cache works transparently
-
-### Cache Performance Monitoring
+### Configuration
 
 ```python
-from faskill import SkillManager
-
-# Create manager with custom cache size
-manager = SkillManager(max_cache_size=200)  # Default: 100
-manager.discover()
-
-# First invocation - cache miss (~10-25ms)
-result1 = manager.invoke_skill("code-reviewer", "Review main.py")
-
-# Second invocation - cache hit (<1ms)
-result2 = manager.invoke_skill("code-reviewer", "Review main.py")
-
-# Monitor cache performance
-stats = manager.get_cache_stats()
-print(f"Cache hit rate: {stats.hit_rate:.1%}")
-print(f"Cache usage: {stats.size}/{stats.max_size}")
-print(f"Total hits: {stats.hits}, Total misses: {stats.misses}")
-
-# Clear cache when needed
-manager.clear_cache("code-reviewer")  # Clear specific skill
-manager.clear_cache()  # Clear all cache entries
+ctx = create_context(skill_dirs=["./skills"], max_cache_size=200)  # default: 100
+ctx.discover()
 ```
 
----
-
-## Multi-Source Discovery
-
-### Multi-Source Discovery with Priority Resolution
+### Monitoring
 
 ```python
-from faskill import SkillManager
+stats = ctx.get_cache_stats()
+print(f"Hit rate: {stats.hit_rate:.1%}")
+print(f"Usage: {stats.size}/{stats.max_size}")
+print(f"Hits: {stats.hits}, Misses: {stats.misses}")
+```
 
-# Configure multiple skill sources
-manager = SkillManager(
-    project_skill_dir="./skills",              # Priority: 100 (highest)
-    anthropic_config_dir="./.claude/skills",  # Priority: 50
-    plugin_dirs=[                              # Priority: 10 each
-        "./plugins/data-tools",
-        "./plugins/web-tools"
-    ],
-    additional_search_paths=["./shared"]      # Priority: 5
-)
+### Clearing
 
-manager.discover()
-
-# Simple name gets highest priority version
-skill = manager.get_skill("csv-parser")  # Gets project version if exists
-
-# Qualified name accesses specific plugin version
-skill = manager.get_skill("data-tools:csv-parser")  # Explicit plugin version
+```python
+ctx.clear_cache("code-reviewer")  # Clear one skill
+ctx.clear_cache()                 # Clear all
 ```
 
 ---
 
 ## Common Usage Patterns
 
-### Custom skills directory
+### Custom skill directories
 
 ```python
 from pathlib import Path
 
-manager = SkillManager(project_skill_dir=Path("/custom/skills"))
+ctx = create_context(skill_dirs=[Path("/custom/skills")])
 ```
 
 ### Error handling
@@ -245,7 +214,7 @@ manager = SkillManager(project_skill_dir=Path("/custom/skills"))
 from faskill import SkillNotFoundError, ContentLoadError
 
 try:
-    result = manager.invoke_skill("my-skill", args)
+    result = ctx.invoke_skill("my-skill", "some args")
 except SkillNotFoundError:
     print("Skill not found")
 except ContentLoadError:
@@ -255,24 +224,26 @@ except ContentLoadError:
 ### Accessing metadata
 
 ```python
-metadata = manager.get_skill("code-reviewer")
+metadata = ctx.get_skill("code-reviewer")
 print(f"Path: {metadata.skill_path}")
 print(f"Tools: {metadata.allowed_tools}")
 ```
 
-### Multiple arguments
+### Async usage
 
 ```python
-# Arguments are passed as a single string
-result = manager.invoke_skill("code-reviewer", "Review file.py for security issues")
+import asyncio
+from faskill import create_context
+
+async def main():
+    ctx = create_context(skill_dirs=["./skills"])
+    await ctx.adiscover()
+
+    result = await ctx.ainvoke_skill("code-reviewer", "Review main.py")
+    print(result)
+
+asyncio.run(main())
 ```
-
-### No placeholder behavior
-
-If SKILL.md has no `$ARGUMENTS` placeholder:
-
-- With arguments: appended to end of content
-- Without arguments: content returned unchanged
 
 ---
 
@@ -294,36 +265,28 @@ logging.getLogger('faskill.core.discovery').setLevel(logging.DEBUG)
 ### Common issues
 
 **Skill not found after discovery:**
-
 - Check skill directory path
 - Verify SKILL.md file exists (case-insensitive)
 - Check logs for parsing errors
 
 **YAML parsing errors:**
-
-- Validate YAML syntax (use yamllint)
+- Validate YAML syntax (use `yamllint`)
 - Check for proper `---` delimiters
-- Ensure required fields present
+- Ensure required fields (`name`, `description`) are present
 
 **Arguments not substituted:**
-
-- Check for `$ARGUMENTS` placeholder (case-sensitive)
-- Check for typos: `$arguments`, `$ARGUMENT`, `$ ARGUMENTS`
-- See logs for typo detection warnings
-
-**Memory usage concerns:**
-
-- Content is loaded lazily (only when `.content` accessed or `invoke()` called)
-- Python 3.10+ recommended for optimal memory efficiency (60% reduction via slots)
+- Use `$ARGUMENTS` (case-sensitive)
+- Avoid typos: `$arguments`, `$ARGUMENT`, `$ ARGUMENTS`
 
 ---
 
 ## Performance Tips
 
-1. **Discover once**: Call `discover()` once at startup, reuse manager
-2. **Reuse manager**: Don't create new SkillManager for each invocation - cache is instance-level
-3. **Monitor cache**: Use `get_cache_stats()` to verify good hit rates (target: >80%)
-4. **Configure cache size**: Increase `max_cache_size` for agents with many skills or diverse arguments
-5. **Keep skills focused**: Large skills (>200KB) may slow down invocation
-6. **Use Python 3.10+**: Better memory efficiency with dataclass slots
-7. **Use async methods**: `ainvoke_skill()` enables concurrent skill execution
+1. **Discover once**: Call `discover()` once at startup, reuse the context
+2. **Reuse the context**: Don't create a new `SkillContext` for each invocation — cache is instance-level
+3. **Monitor cache**: Use `get_cache_stats()` to verify hit rates (target: >80%)
+4. **Configure cache size**: Increase `max_cache_size` for many skills or diverse arguments
+5. **Keep skills focused**: Large skills (>200KB) may slow invocation
+6. **Use async methods**: `ainvoke_skill()` enables concurrent execution
+7. **Python 3.10+**: Better memory efficiency with dataclass slots
+

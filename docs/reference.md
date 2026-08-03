@@ -7,6 +7,8 @@ This document provides reference information for faskill including SKILL.md form
 - [SKILL.md Format](#skillmd-format)
 - [System Requirements](#system-requirements)
 - [Development](#development)
+- [API Overview](#api-overview)
+- [Exception Hierarchy](#exception-hierarchy)
 
 ---
 
@@ -47,30 +49,29 @@ Content with $ARGUMENTS placeholder...
 
 ### Python Version
 
-- **Python**: 3.10+
+- **Python**: 3.10+ (3.10, 3.11, 3.12 supported)
 
 ### Core Dependencies
 
-- **Core dependencies**: PyYAML 6.0+
+- **PyYAML** ≥ 6.0 — YAML frontmatter parsing
+- **aiofiles** ≥ 23.0 — async file I/O for skill content loading
+- **aiologic** ≥ 0.17.1 — async-safe locking for the invocation cache
 
 ### Optional Dependencies
 
-- **Optional**: langchain-core 0.1.0+, pydantic 2.0+ (for LangChain integration)
+- **langchain-core** ≥ 0.1.0 + **pydantic** ≥ 2.0 — LangChain tool integration
 
 ### Installation
 
 ```bash
-# Core library (includes async support)
+# Core library
 pip install faskill
 
 # With LangChain integration
 pip install faskill[langchain]
 
-# All extras (LangChain + dev tools)
+# All optional extras
 pip install faskill[all]
-
-# Development dependencies
-pip install faskill[dev]
 ```
 
 ---
@@ -80,19 +81,17 @@ pip install faskill[dev]
 ### Setup
 
 ```bash
-git clone https://github.com/maxvaega/faskill.git
+git clone https://github.com/AmritaBot/faskill.git
 cd faskill
 python3.10 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[all]"
 ```
 
 ### Run tests
 
 The project includes a comprehensive pytest-based test suite with 70%+ coverage validating core functionality, integrations, and edge cases.
 For detailed testing instructions, test organization, markers, and debugging tips, see **[tests/README.md](../tests/README.md)**.
-
-### Running Tests
 
 ```bash
 # Run all tests
@@ -104,7 +103,7 @@ pytest --cov
 # Run specific test markers
 pytest -m async          # Async tests only
 pytest -m integration    # Integration tests only
-pytest -m unit          # Unit tests only
+pytest -m unit           # Unit tests only
 
 # Run specific test file
 pytest tests/test_manager.py
@@ -123,7 +122,7 @@ ruff check src/faskill
 ruff format src/faskill
 
 # Type check
-mypy src/faskill --strict
+pyright src/faskill
 ```
 
 ### Running Examples
@@ -132,7 +131,7 @@ mypy src/faskill --strict
 # Basic sync usage
 python examples/basic_usage.py
 
-# Async usage with FastAPI
+# Async usage
 python examples/async_usage.py
 
 # LangChain integration
@@ -144,66 +143,110 @@ python examples/multi_source.py
 # File path resolution
 python examples/file_references.py
 
-# Cache performance demo (NEW in v0.4)
+# Cache performance demo
 python examples/caching_demo.py
+
+# Script execution
+python examples/script_execution.py
 ```
 
 ---
 
 ## API Overview
 
-### SkillManager
+### `create_context()`
+
+Factory function — the recommended entry point for creating a `SkillContext`.
+
+```python
+from faskill import create_context
+
+ctx = create_context(
+    skill_dirs=["./skills", "./plugins"],
+    default_script_timeout=30,   # seconds
+    max_cache_size=100,          # LRU entries
+)
+ctx.discover()
+```
+
+### `SkillContext`
 
 Main orchestration class for skill discovery and invocation.
 
 **Key Methods**:
 
-- `discover()` - Synchronous skill discovery
-- `adiscover()` - Async skill discovery
-- `invoke_skill(name, args)` - Invoke a skill
-- `ainvoke_skill(name, args)` - Async skill invocation
-- `get_skill(name)` - Get skill metadata
-- `list_skills()` - List all discovered skills
-- `execute_skill_script(skill_name, script_name, arguments, timeout)` - Execute a script
-- `get_cache_stats()` - Get cache statistics
-- `clear_cache(skill_name)` - Clear cache entries
+| Method | Description |
+|--------|-------------|
+| `discover()` | Synchronous skill discovery |
+| `adiscover()` | Async skill discovery |
+| `add_source(path)` | Add a skill directory (CUSTOM or PLUGIN) |
+| `invoke_skill(name, args)` | Invoke a skill by name |
+| `ainvoke_skill(name, args)` | Async skill invocation |
+| `get_skill(name)` | Get skill metadata (progressive disclosure L1) |
+| `list_skills()` | List all discovered skill names |
+| `execute_skill_script(skill_name, script_name, arguments, timeout)` | Execute a script |
+| `get_cache_stats()` | Get cache hit/miss statistics |
+| `clear_cache(skill_name=None)` | Clear cache entries |
 
-### SkillMetadata
+### `SkillMetadata`
 
 Dataclass containing skill metadata (Level 1 of progressive disclosure).
 
 **Key Fields**:
 
-- `name: str` - Skill identifier
-- `description: str` - Human-readable description
-- `skill_path: Path` - Path to skill directory
-- `allowed_tools: List[str]` - Allowed tool names
-- `source: str` - Source location (project, plugin, etc.)
-- `priority: int` - Discovery priority
+- `name: str` — Skill identifier
+- `description: str` — Human-readable description
+- `skill_path: Path` — Path to skill directory
+- `allowed_tools: List[str]` — Allowed tool names
+- `source: str` — Source location ("CUSTOM", "PLUGIN", etc.)
+- `priority: int` — Discovery priority (higher wins on conflict)
 
-### Skill
+### `Skill`
 
 Dataclass containing full skill content (Level 2 of progressive disclosure).
 
 **Key Fields**:
 
-- `metadata: SkillMetadata` - Skill metadata
-- `content: str` - Full SKILL.md content
-- `scripts: List[ScriptMetadata]` - Available scripts
+- `metadata: SkillMetadata` — Skill metadata
+- `content: str` — Full SKILL.md content with arguments substituted
+- `scripts: List[ScriptMetadata]` — Available script files
 
-### Exception Hierarchy
+### `ScriptMetadata`
+
+Dataclass describing an executable script associated with a skill.
+
+### `ScriptExecutionResult`
+
+Dataclass returned by `execute_skill_script()` with `exit_code`, `stdout`, `stderr`, `execution_time_ms`, `timeout`, `signaled`, and truncation fields.
+
+### `FilePathResolver`
+
+Utility for resolving relative file paths within a skill's directory hierarchy.
+
+---
+
+## Exception Hierarchy
 
 ```python
-faskillError                    # Base exception
-├── DiscoveryError               # Skill discovery failures
-├── ParsingError                 # YAML parsing failures
-├── SkillNotFoundError           # Skill not found
-├── ContentLoadError             # Content loading failures
-├── ArgumentSubstitutionError    # Argument substitution failures
-├── ScriptNotFoundError          # Script not found
-├── InterpreterNotFoundError     # Interpreter not available
-├── PathSecurityError            # Path security validation failures
-└── ToolIDValidationError        # Tool ID format validation failures
+SkillsUseError                         # Base exception for all faskill errors
+├── SkillParsingError                  # Base for YAML/frontmatter parsing errors
+│   ├── InvalidYAMLError               # YAML syntax error in frontmatter
+│   ├── MissingRequiredFieldError      # Required field (name/description) missing
+│   └── InvalidFrontmatterError        # Invalid frontmatter structure
+├── SkillInvocationError               # Base for runtime invocation errors
+│   ├── SkillNotFoundError             # Skill not found in any source
+│   ├── ContentLoadError               # Failed to read skill file
+│   ├── ArgumentProcessingError        # Argument substitution failure
+│   ├── ArgumentSerializationError     # Argument JSON serialization failure
+│   ├── ArgumentSizeError              # Arguments exceed size limit
+│   ├── InterpreterNotFoundError       # Script interpreter not available
+│   ├── ScriptNotFoundError            # Referenced script not found
+│   └── ScriptPermissionError          # Insufficient permissions for script
+└── SkillSecurityError                 # Base for security-related errors
+    ├── SuspiciousInputError           # Potentially malicious input detected
+    ├── SizeLimitExceededError         # Content exceeds configured size limit
+    ├── PathSecurityError              # Path traversal or security violation
+    └── ToolIDValidationError          # Invalid tool ID format
 ```
 
 ---

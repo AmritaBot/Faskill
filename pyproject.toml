@@ -44,10 +44,10 @@ langchain = ["langchain-core>=0.1.0", "pydantic>=2.0"]
 all = ["langchain-core>=0.1.0", "pydantic>=2.0"]
 
 [project.urls]
-Homepage = "https://github.com/maxvaega/faskill"
-Repository = "https://github.com/maxvaega/faskill"
-Documentation = "https://github.com/maxvaega/faskill#readme"
-Issues = "https://github.com/maxvaega/faskill/issues"
+Homepage = "https://github.com/AmritaBot/Faskill"
+Repository = "https://github.com/AmritaBot/Faskill"
+Documentation = "https://github.com/AmritaBot/Faskill#readme"
+Issues = "https://github.com/AmritaBot/Faskill/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/faskill"]
@@ -133,6 +133,6 @@ dev = [
     "types-PyYAML",
     "faskill[all]",
     "pyright>=1.1.411",
-    "amrita-core>=0.12.7",
+    # "amrita-core>=0.12.7", # TODO: Integrate AmritaCore supports
     "pytest-benchmark>=5.2.3",
 ]

@@ -15,32 +15,27 @@ This guide covers how to integrate faskill with LangChain agents.
 ## Basic Integration (Sync)
 
 ```python
-from faskill import SkillManager
+from faskill import create_context
 from faskill.integrations.langchain import create_langchain_tools
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from langchain.messages import HumanMessage
 
 # Discover skills
-manager = SkillManager()
-manager.discover()
+ctx = create_context(skill_dirs=["./skills"])
+ctx.discover()
 
 # Convert to LangChain tools
-tools = create_langchain_tools(manager)
+tools = create_langchain_tools(ctx)
 
 # Create agent
-llm = ChatOpenAI(model="gpt-5.1")
-prompt = "You are a helpful assistant. use the available skills tools to answer the user queries."
-agent = create_agent(
-    llm,
-    tools,
-    system_prompt=prompt
-    )
+llm = ChatOpenAI(model="gpt-4o")
+prompt = "You are a helpful assistant. Use the available skill tools to answer user queries."
+agent = create_agent(llm, tools, system_prompt=prompt)
 
 # Use agent
-query="What are Common Architectural Scenarios in python?"
-messages = [HumanMessage(content=query)]
-result = agent.invoke({"messages": messages})
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "What are common architectural patterns in Python?"}]}
+)
 ```
 
 ---
@@ -49,30 +44,25 @@ result = agent.invoke({"messages": messages})
 
 ```python
 import asyncio
-from faskill import SkillManager
+from faskill import create_context
 from faskill.integrations.langchain import create_langchain_tools
-from langchain.agents import AgentExecutor
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
-async def run_agent():
-    manager = SkillManager()
-    await manager.adiscover()
+async def main():
+    ctx = create_context(skill_dirs=["./skills"])
+    await ctx.adiscover()
 
-    tools = create_langchain_tools(manager)
-    prompt = "You are a helpful assistant. use the available skills tools to answer the user queries."
-    llm = ChatOpenAI(model="gpt-5.1")
+    tools = create_langchain_tools(ctx)
+    llm = ChatOpenAI(model="gpt-4o")
+    prompt = "You are a helpful assistant. Use the available skill tools to answer user queries."
 
-    agent = create_agent(
-        llm,
-        tools,
-        system_prompt=prompt
-        )
+    agent = create_agent(llm, tools, system_prompt=prompt)
+    result = await agent.ainvoke(
+        {"messages": [{"role": "user", "content": "What are common architectural patterns in Python?"}]}
+    )
 
-    query="What are Common Architectural Scenarios in python?"
-    messages = [HumanMessage(content=query)]
-    result = await agent.ainvoke({"messages": messages})
-
-asyncio.run(run_agent())
+asyncio.run(main())
 ```
 
 ---
@@ -82,14 +72,14 @@ asyncio.run(run_agent())
 Scripts are automatically exposed as separate LangChain tools when you use `create_langchain_tools()`:
 
 ```python
-from faskill import SkillManager
+from faskill import create_context
 from faskill.integrations.langchain import create_langchain_tools
 
-manager = SkillManager()
-manager.discover()
+ctx = create_context(skill_dirs=["./skills"])
+ctx.discover()
 
 # Each script becomes a separate tool: "{skill-name}__{script-name}"
-tools = create_langchain_tools(manager)
+tools = create_langchain_tools(ctx)
 
 # Example tool names:
 # - "pdf-extractor__extract"
@@ -108,7 +98,7 @@ tools = create_langchain_tools(manager)
 
 ## Tool ID Format and Validation
 
-Script tool IDs follow a validated format to ensure LLM provider compatibility:
+Script tool IDs follow a validated format to ensure LLM provider compatibility.
 
 ### Format Rules
 
@@ -122,7 +112,7 @@ Script tool IDs follow a validated format to ensure LLM provider compatibility:
 ### Examples
 
 ```python
-# Examples of valid tool IDs:
+# Valid tool IDs:
 # ✓ "pdf-extractor__extract" (skill: PDF-Extractor, script: extract.py)
 # ✓ "csv-parser__parse" (skill: csv_parser, script: parse.py)
 # ✓ "data-processor__transform-json" (skill: DataProcessor, script: transform_json.py)
@@ -136,10 +126,10 @@ Script tool IDs follow a validated format to ensure LLM provider compatibility:
 ### Error Handling
 
 ```python
-from faskill.core.exceptions import ToolIDValidationError
+from faskill import ToolIDValidationError
 
 try:
-    tools = create_langchain_tools(manager)
+    tools = create_langchain_tools(ctx)
 except ToolIDValidationError as e:
     print(f"Invalid tool ID: {e}")
 ```
@@ -153,18 +143,18 @@ except ToolIDValidationError as e:
 See `examples/langchain_agent.py` for a complete working example:
 
 ```python
-from faskill import SkillManager
+from faskill import create_context
 from faskill.integrations.langchain import create_langchain_tools
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 # Setup
-manager = SkillManager()
-manager.discover()
-tools = create_langchain_tools(manager)
+ctx = create_context(skill_dirs=["./skills"])
+ctx.discover()
+tools = create_langchain_tools(ctx)
 
 # Create agent
-llm = ChatOpenAI(model="gpt-4")
+llm = ChatOpenAI(model="gpt-4o")
 agent = create_agent(llm, tools, system_prompt="You are a helpful assistant.")
 
 # Run query
@@ -173,18 +163,16 @@ result = agent.invoke({"messages": [{"role": "user", "content": "Review my code"
 
 ### Example 2: Async Agent with Script Tools
 
-See `examples/async_usage.py` for async patterns:
-
 ```python
 import asyncio
-from faskill import SkillManager
+from faskill import create_context
 from faskill.integrations.langchain import create_langchain_tools
 
 async def main():
-    manager = SkillManager()
-    await manager.adiscover()
+    ctx = create_context(skill_dirs=["./skills"])
+    await ctx.adiscover()
 
-    tools = create_langchain_tools(manager)
+    tools = create_langchain_tools(ctx)
     # Tools now include both skill invocation and script execution tools
 
     # Use with async LangChain agent...
@@ -195,12 +183,11 @@ asyncio.run(main())
 ### Example 3: Error Handling
 
 ```python
-from faskill import SkillNotFoundError, ContentLoadError
-from faskill.core.exceptions import ScriptNotFoundError
+from faskill import SkillNotFoundError, ContentLoadError, ScriptNotFoundError
 
 try:
-    tools = create_langchain_tools(manager)
-    result = agent.invoke({"messages": [...]})
+    tools = create_langchain_tools(ctx)
+    result = agent.invoke({"messages": [{"role": "user", "content": "..."}]})
 except SkillNotFoundError:
     print("Skill not found during tool creation")
 except ContentLoadError:
@@ -213,9 +200,9 @@ except ScriptNotFoundError:
 
 ## Best Practices
 
-1. **Discover Once**: Call `discover()` once at startup and reuse the manager
-2. **Async When Possible**: Use `adiscover()` and `ainvoke()` for better performance
-3. **Monitor Cache**: Use `manager.get_cache_stats()` to verify good cache hit rates
+1. **Discover Once**: Call `discover()` once at startup and reuse the context
+2. **Async When Possible**: Use `adiscover()` and `ainvoke_skill()` for better performance
+3. **Monitor Cache**: Use `ctx.get_cache_stats()` to verify good cache hit rates
 4. **Handle Errors**: Always wrap agent invocations in try-except blocks
 5. **Tool Descriptions**: Ensure SKILL.md descriptions are clear for LLM understanding
 6. **Script Parameters**: Use lowercase parameter names in scripts for consistency
