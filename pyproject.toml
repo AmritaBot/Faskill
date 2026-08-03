@@ -1,10 +1,6 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "faskill"
-version = "0.4.0"
+version = "0.1.0"
 description = "Python library implementing Anthropic's Agent Skills functionality for LLM-powered agents"
 readme = "README.md"
 license = { text = "MIT" }
@@ -30,6 +26,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
@@ -48,9 +46,6 @@ Homepage = "https://github.com/AmritaBot/Faskill"
 Repository = "https://github.com/AmritaBot/Faskill"
 Documentation = "https://github.com/AmritaBot/Faskill#readme"
 Issues = "https://github.com/AmritaBot/Faskill/issues"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/faskill"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -114,6 +109,7 @@ ignore = [
     "E402",  # module level import not at top of file
     "UP006", # Use X instead of typing.X for annotations (Python 3.9 compatibility)
     "UP035", # typing.X is deprecated (Python 3.9 compatibility)
+    "RUF036", # None at the end, preview.
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -137,3 +133,8 @@ dev = [
     # "amrita-core>=0.12.7", # TODO: Integrate AmritaCore supports
     "pytest-benchmark>=5.2.3",
 ]
+
+[tool.pyright]
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"

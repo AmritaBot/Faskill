@@ -1,437 +1,156 @@
-# Contributing to faskill
+# Contribution Guide
 
-Thank you for your interest in contributing to faskill! This document provides guidelines and instructions for contributing to the project.
-
-## Table of Contents
-
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Development Workflow](#development-workflow)
-- [Testing Guidelines](#testing-guidelines)
-- [Code Style](#code-style)
-- [Submitting Changes](#submitting-changes)
-- [Reporting Issues](#reporting-issues)
-- [Feature Requests](#feature-requests)
+Thank you for your interest in contributing to Faskill! This guide will help you understand how to participate in the project.
 
 ## Code of Conduct
 
-We are committed to providing a welcoming and inclusive environment for all contributors. Please be respectful and constructive in all interactions.
+Before participating in the project, please read our [Code of Conduct](./CODE_OF_CONDUCT.md) and abide by its provisions.
 
-**Expected Behavior:**
-- Be respectful and considerate
-- Welcome newcomers and help them get started
-- Focus on what is best for the community
-- Show empathy towards other community members
+## AIGC Content Licensing Policy
 
-**Unacceptable Behavior:**
-- Harassment, discrimination, or offensive comments
-- Trolling, insulting, or derogatory remarks
-- Public or private harassment
-- Publishing others' private information without permission
+We welcome the use of AI-generated content as a tool to enhance development efficiency, while maintaining high standards for code quality and integrity. See [AIGC Content Licensing Policy](./POLICY_OF_AIGC) for details.
 
-## Getting Started
+## Setting Up the Development Environment
 
-### Prerequisites
+1. Fork the repository to your account
+2. Clone your fork:
 
-- Python 3.10 or higher (3.10+ recommended for optimal performance)
-- Git
-- Basic understanding of Python development
-- Familiarity with pytest for testing
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/Faskill.git
+   cd Faskill
+   ```
 
-### Finding Ways to Contribute
+3. Install dependencies:
 
-1. **Browse open issues**: Check the [issue tracker](https://github.com/AmritaBot/faskill/issues) for bugs and feature requests
-2. **Documentation**: Help improve documentation, examples, or tutorials
-3. **Bug fixes**: Fix bugs and submit pull requests
-4. **New features**: Propose and implement new features (discuss first in an issue)
-4. **Tests**: Add test coverage for existing functionality
-5. **Examples**: Create new example skills or usage patterns
+   ```bash
+   # Using uv (recommended)
+   uv venv
+   uv sync
 
-## Development Setup
+   # Or using pip
+   pip install -e .
+   ```
 
-### 1. Fork and Clone
+## How to Contribute
 
-```bash
-# Fork the repository on GitHub, then clone your fork
-git clone https://github.com/YOUR_USERNAME/faskill.git
-cd faskill
-```
+### Reporting Bugs
 
-### 2. Install Development Dependencies
+1. Search the [Issues](https://github.com/AmritaBot/Faskill/issues) page to see if a similar bug report already exists
+2. If not, create a new issue containing:
+   - Detailed bug description
+   - Reproduction steps
+   - Expected behavior
+   - Actual behavior
+   - Environment information (OS, Python version, Faskill version, etc.)
+   - Relevant error messages or screenshots
 
-```bash
-# Install package in editable mode with all extras
-pip install -e ".[dev,langchain]"
-```
+### Submitting Feature Requests
 
-This installs:
-- Core dependencies (PyYAML)
-- Development tools (pytest, pytest-cov, mypy, ruff)
-- Optional integrations (langchain-core, pydantic)
+1. Search the [Issues](https://github.com/AmritaBot/Faskill/issues) page to see if a similar feature request already exists
+2. If not, create a new issue describing:
+   - Feature requirements
+   - Why this feature would be useful
+   - How this feature would be used
+   - Possible implementation approaches
 
-### 3. Verify Setup
+### Submitting Code
 
-```bash
-# Run tests to ensure everything works
-pytest
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/AmazingFeature` or `git checkout -b fix/BugFix`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Create a Pull Request
 
-# Run examples
-python examples/basic_usage.py
-python examples/langchain_agent.py
-```
+### Pull Request Guidelines
 
-## Development Workflow
+- Ensure your PR has a clear description explaining what changes were made and why
+- Follow the [PEP 8](https://peps.python.org/pep-0008/) Python code style
+- Add necessary tests
+- Make sure all tests pass
+- Update documentation (if needed)
+- If the PR resolves an issue, reference it in the PR (e.g. `Fixes #123`)
 
-### 1. Make Your Changes on a feature branch
+## Testing Requirements
 
-- Write clear, concise commit messages
-- Follow the existing code style
-- Add tests for new functionality
-- Update documentation as needed
+### Unit Tests for Functional Changes
 
-### 3. Run Quality Checks
+When contributing code that introduces new functionality or modifies existing functionality, you are required to include corresponding unit tests:
 
-Before committing, ensure all checks pass:
+- **New Features**: All new features must include comprehensive unit tests covering both basic functionality and edge cases
+- **Bug Fixes**: Each bug fix must include regression tests that reproduce the reported issue and verify the fix
+- **Breaking Changes**: Breaking changes must include tests demonstrating the new behavior and verifying that the change works as intended
 
-```bash
-# Run tests with coverage
-pytest --cov=src/faskill --cov-report=html
-pytest --cov=src/faskill --cov-report=term-missing
+### Test Quality Standards
 
-# Type checking
-mypy src/faskill --strict
+- Write tests that are clear, focused, and easy to understand
+- Use descriptive test names that explain what is being tested
+- Include both positive and negative test cases where applicable
+- Test error conditions and boundary values
+- Follow the existing test patterns in the codebase
 
-# Linting
-ruff check src/faskill
+### Running Tests
 
-# Format code
-ruff format src/faskill
-```
-
-### 4. Commit Your Changes
+Before submitting your PR, ensure all tests pass:
 
 ```bash
-git add .
-git commit -m "Brief description of changes"
+# Run all tests (use python3 as specified in project configuration)
+uv run pytest tests/
 ```
 
-**Commit Message Guidelines:**
-- Use present tense ("Add feature" not "Added feature")
-- Use imperative mood ("Fix bug" not "Fixes bug")
-- First line should be 50 characters or less
-- Reference issues and PRs when relevant
+## Development Process
 
-Examples:
-```
-Add async support for skill discovery
+### Code Style
 
-Fix YAML parsing error with special characters
+- Use the [PEP 8](https://peps.python.org/pep-0008/) Python code style
+- Add type hints
+- Write docstrings for all public functions and classes
+- Use meaningful variable and function names
+- Use ruff for code formatting
 
-Update README with installation instructions
-
-Add tests for argument substitution edge cases
-```
-
-## Testing Guidelines
-
-### Writing Tests
-
-- All new functionality must include tests
-- Tests should be in `tests/` directory, mirroring `src/` structure
-- Use pytest fixtures from `tests/conftest.py`
-- Aim for 70%+ code coverage
-
-### Test Structure
-
-```python
-import pytest
-from faskill import SkillManager
-from faskill.core.exceptions import SkillNotFoundError
-
-def test_feature_success_case(tmp_path):
-    """Test successful execution of feature."""
-    # Arrange
-    manager = SkillManager(tmp_path)
-
-    # Act
-    result = manager.some_method()
-
-    # Assert
-    assert result is not None
-
-def test_feature_error_case(tmp_path):
-    """Test error handling."""
-    manager = SkillManager(tmp_path)
-
-    with pytest.raises(SkillNotFoundError):
-        manager.invoke_skill("nonexistent")
-```
-
-### Test Markers
-
-Use pytest markers for categorization:
-
-```python
-@pytest.mark.unit  # Unit tests
-@pytest.mark.integration  # Integration tests
-@pytest.mark.slow  # Slow-running tests
-```
-
-### Running Specific Tests
+Before submitting a PR, it's recommended to run:
 
 ```bash
-# Run specific test file
-pytest tests/test_manager.py
-
-# Run specific test
-pytest tests/test_manager.py::test_discover_skills
-
-# Run with markers
-pytest -m unit
-pytest -m "not slow"
-
-# Run with verbose output
-pytest -v
-
-# Run with coverage
-pytest --cov=src/faskill --cov-report=html
-```
-
-## Code Style
-
-### Python Style Guidelines
-
-- Follow PEP 8 conventions
-- Use type hints for all function signatures
-- Maximum line length: 88 characters (Black/Ruff default)
-- Use descriptive variable and function names
-
-### Type Hints
-
-```python
-from pathlib import Path
-from typing import Optional, List
-
-def load_skill(
-    skill_path: Path,
-    validate: bool = True
-) -> Optional[dict[str, str]]:
-    """Load a skill from disk.
-
-    Args:
-        skill_path: Path to skill directory
-        validate: Whether to validate skill contents
-
-    Returns:
-        Skill metadata dictionary or None if loading fails
-    """
-    ...
+uv run ruff format .
+uv run ruff check .
 ```
 
 ### Documentation
 
-- All public functions/classes must have docstrings
-- Use Google-style docstrings
-- Include examples for complex functionality
+- Update relevant documentation in the `docs/` directory
+- Add examples for new features
+- Keep documentation synchronized with code
+- Both English and Chinese documentation should be updated simultaneously
 
-```python
-def invoke_skill(self, skill_name: str, arguments: str = "") -> str:
-    """Invoke a skill with arguments.
+## Code Contribution Examples
 
-    Args:
-        skill_name: Name of skill to invoke
-        arguments: Arguments to pass to skill
+### Adding New Features
 
-    Returns:
-        Processed skill content with arguments substituted
+1. Create a new module in `src/faskill/` or extend existing modules
+2. Add type definitions to `types.py` (if needed)
+3. Implement the feature ensuring it follows existing code style
+4. Add unit tests
+5. Update documentation (both English and Chinese)
 
-    Raises:
-        SkillNotFoundError: If skill not found
-        ContentLoadError: If skill content cannot be loaded
+### Fixing Bugs
 
-    Example:
-        >>> manager = SkillManager()
-        >>> manager.discover()
-        >>> result = manager.invoke_skill("code-reviewer", "Review file.py")
-    """
-    ...
-```
+1. Identify the problem
+2. Create a test case to verify the issue
+3. Fix the issue
+4. Ensure all tests pass
 
-### Code Organization
+### Improving Documentation
 
-- Keep functions focused and single-purpose
-- Use dataclasses for data structures
-- Prefer composition over inheritance
-- Follow the existing module structure
+- Update relevant documentation in the `docs/` directory
+- Ensure grammar is correct and content is clear
+- Follow existing documentation structure
+- Update both English and Chinese versions simultaneously
 
-## Submitting Changes
+## Contact Us
 
-### 1. Push to Your Fork
-
-```bash
-git push origin feature/your-feature-name
-```
-
-### 2. Create Pull Request
-
-1. Go to the [faskill repository](https://github.com/AmritaBot/faskill)
-2. Click "New Pull Request"
-3. Select your fork and branch
-4. Fill out the PR template with:
-   - Description of changes
-   - Related issue number (if applicable)
-   - Testing performed
-   - Screenshots (if UI-related)
-
-### 3. PR Review Process
-
-- Maintainers will review your PR
-- Address any requested changes
-- Once approved, your PR will be merged
-- Your contribution will be credited in release notes
-
-### PR Checklist
-
-Before submitting, ensure:
-
-- [ ] All tests pass (`pytest`)
-- [ ] Code coverage is maintained or improved
-- [ ] Type checking passes (`mypy --strict`)
-- [ ] Linting passes (`ruff check`)
-- [ ] Code is formatted (`ruff format`)
-- [ ] Documentation is updated
-- [ ] Commit messages are clear and descriptive
-- [ ] Changes are tested on Python 3.10+
-
-## Reporting Issues
-
-### Bug Reports
-
-When reporting bugs, include:
-
-1. **Description**: Clear description of the issue
-2. **Steps to reproduce**: Minimal code example
-3. **Expected behavior**: What should happen
-4. **Actual behavior**: What actually happens
-5. **Environment**:
-   - Python version
-   - faskill version
-   - Operating system
-   - Relevant dependencies
-
-**Example:**
-
-```markdown
-### Bug: Skill discovery fails with spaces in directory names
-
-**Description:**
-SkillManager.discover() raises FileNotFoundError when skill directories contain spaces.
-
-**Steps to reproduce:**
-```python
-from pathlib import Path
-from faskill import SkillManager
-
-# Create skill directory with space
-skill_dir = Path("~/.claude/skills/my skill")
-skill_dir.mkdir(parents=True)
-
-manager = SkillManager()
-manager.discover()  # Fails here
-```
-
-**Expected:** Should discover skills in directories with spaces
-**Actual:** FileNotFoundError raised
-
-**Environment:**
-- Python 3.10.19
-- faskill 0.1.0
-- macOS 14.0
-
-## Feature Requests
-
-When proposing features:
-
-1. **Use case**: Describe the problem you're trying to solve
-2. **Proposed solution**: How you envision the feature working
-3. **Alternatives considered**: Other approaches you've thought about
-4. **Additional context**: Examples, mockups, or references
-
-**Example:**
-
-### Feature: Async skill discovery
-
-**Use case:**
-In applications with hundreds of skills, synchronous discovery blocks the event loop.
-
-**Proposed solution:**
-Add `async def adiscover()` method to SkillManager:
-
-```python
-manager = SkillManager()
-await manager.adiscover()
-```
-
-**Alternatives:**
-- Background thread (doesn't work well with async frameworks)
-- Lazy discovery (increases latency at invocation time)
-
-**Additional context:**
-Similar to langchain's async patterns in LangChain 0.1+
------
-
-## Development Tips
-
-### Debugging
-
-Enable debug logging:
-
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-```
-
-Module-specific logging:
-
-```python
-logging.getLogger('faskill.core.discovery').setLevel(logging.DEBUG)
-```
-
-### Performance Testing
-
-Test with many skills:
-
-```bash
-# Create 100 test skills
-python tests/generate_test_skills.py
-
-# Measure discovery time
-python -m timeit "from faskill import SkillManager; m=SkillManager(); m.discover()"
-```
-
-### Memory Profiling
-
-```python
-from memory_profiler import profile
-
-@profile
-def test_memory():
-    manager = SkillManager()
-    manager.discover()
-    # Access content for subset of skills
-    for skill in manager.list_skills()[:10]:
-        _ = manager.invoke_skill(skill.name)
-```
-
-## Questions?
-
-- Open a [discussion](https://github.com/AmritaBot/faskill/discussions)
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the MIT License.
+- Discord: [Discord Server](https://discord.gg/byAD3sbjjj)
+- QQ Group: 1006893368
+- Email: [admin@amritabot.com](mailto:admin@amritabot.com)
 
 ## Acknowledgments
 
-Thank you for contributing to faskill! Your contributions help make AI agents more capable and easier to develop.
+Thank you to all community members who have contributed to Faskill!

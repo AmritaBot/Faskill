@@ -20,6 +20,7 @@ from faskill.core.exceptions import (
     ContentLoadError,
     InterpreterNotFoundError,
     InvalidFrontmatterError,
+    InvalidSkillNameError,
     InvalidYAMLError,
     MissingRequiredFieldError,
     PathSecurityError,
@@ -91,6 +92,7 @@ __all__ = [
     "InvalidYAMLError",
     "MissingRequiredFieldError",
     "InvalidFrontmatterError",
+    "InvalidSkillNameError",
     # Runtime exceptions
     "SkillNotFoundError",
     "ArgumentProcessingError",

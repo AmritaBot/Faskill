@@ -16,7 +16,7 @@ This document provides reference information for faskill including SKILL.md form
 
 ### Required Fields
 
-- `name` (string): Unique skill identifier
+- `name` (string): Unique skill identifier. **Must not contain spaces** — names with spaces raise `InvalidSkillNameError`. Set the environment variable `NO_FAIL_ON_SPACE=1` to bypass this validation.
 - `description` (string): Human-readable skill description
 
 ### Optional Fields
@@ -232,6 +232,7 @@ SkillsUseError                         # Base exception for all faskill errors
 ├── SkillParsingError                  # Base for YAML/frontmatter parsing errors
 │   ├── InvalidYAMLError               # YAML syntax error in frontmatter
 │   ├── MissingRequiredFieldError      # Required field (name/description) missing
+│   ├── InvalidSkillNameError          # Skill name contains spaces (bypass: NO_FAIL_ON_SPACE=1)
 │   └── InvalidFrontmatterError        # Invalid frontmatter structure
 ├── SkillInvocationError               # Base for runtime invocation errors
 │   ├── SkillNotFoundError             # Skill not found in any source

@@ -60,6 +60,31 @@ class MissingRequiredFieldError(SkillParsingError):
         self.field_name = field_name
 
 
+class InvalidSkillNameError(SkillParsingError):
+    """Skill name contains invalid characters (e.g., spaces).
+
+    Raised when a skill's name field contains characters that are
+    not allowed in skill identifiers.  By default names with spaces
+    are rejected.
+
+    Set the environment variable ``NO_FAIL_ON_SPACE=1`` to suppress
+    this check and allow names containing spaces.
+
+    Attributes:
+        name: The invalid skill name that was rejected.
+    """
+
+    def __init__(self, message: str, name: str | None = None) -> None:
+        """Initialize InvalidSkillNameError with the rejected name.
+
+        Args:
+            message: Error description
+            name: The invalid skill name value
+        """
+        super().__init__(message)
+        self.name = name
+
+
 class InvalidFrontmatterError(SkillParsingError):
     """Frontmatter structure invalid (missing delimiters, non-dict, etc.)."""
 

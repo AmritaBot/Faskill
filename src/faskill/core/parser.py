@@ -7,6 +7,7 @@ YAML frontmatter from skill files, and plugin manifest parsing functionality.
 import asyncio
 import json
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Any, Dict
@@ -15,6 +16,7 @@ import yaml
 
 from faskill.core.exceptions import (
     InvalidFrontmatterError,
+    InvalidSkillNameError,
     InvalidYAMLError,
     ManifestNotFoundError,
     ManifestParseError,
@@ -189,6 +191,19 @@ class SkillParser:
             raise MissingRequiredFieldError(
                 f"Field '{field_name}' cannot be empty in {skill_path}",
                 field_name=field_name,
+            )
+
+        # Validate name contains no spaces (can be bypassed with NO_FAIL_ON_SPACE env var)
+        if field_name == "name" and " " in value:
+            if not os.environ.get("NO_FAIL_ON_SPACE"):
+                raise InvalidSkillNameError(
+                    f"Skill name '{value}' contains spaces in {skill_path}. "
+                    f"Set NO_FAIL_ON_SPACE=1 to allow names with spaces.",
+                    name=value,
+                )
+            logger.warning(
+                f"Skill name '{value}' contains spaces (allowed via NO_FAIL_ON_SPACE). "
+                f"Source: {skill_path}"
             )
 
         return value

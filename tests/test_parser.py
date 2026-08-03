@@ -4,9 +4,11 @@ This module validates the parser's ability to extract and validate YAML frontmat
 from SKILL.md files, including error handling for malformed inputs.
 """
 
+import os
 import pytest
 
 from faskill.core.exceptions import (
+    InvalidSkillNameError,
     InvalidYAMLError,
     MissingRequiredFieldError,
 )
@@ -134,6 +136,7 @@ def test_parse_invalid_yaml_syntax_raises_validation_error(fixtures_dir):
         ("invalid-missing-name", MissingRequiredFieldError, "name"),
         ("invalid-missing-description", MissingRequiredFieldError, "description"),
         ("invalid-yaml-syntax", InvalidYAMLError, None),
+        ("invalid-name-with-space", InvalidSkillNameError, None),
     ],
 )
 def test_parse_invalid_skills(fixtures_dir, fixture_name, expected_exception, expected_field):
@@ -211,3 +214,42 @@ def test_parse_skill_with_invalid_version_type_returns_none(fixtures_dir, caplog
         "version" in record.message.lower() and "string" in record.message.lower()
         for record in caplog.records
     )
+
+
+# --- Skill name space validation tests ---
+
+
+def test_parse_name_with_spaces_raises_invalid_skill_name_error(fixtures_dir):
+    """Validate InvalidSkillNameError raised when skill name contains spaces."""
+    parser = SkillParser()
+    skill_path = fixtures_dir / "invalid-name-with-space" / "SKILL.md"
+
+    with pytest.raises(InvalidSkillNameError) as exc_info:
+        parser.parse_skill_file(skill_path)
+
+    assert exc_info.value.name == "my skill with spaces"
+    assert "spaces" in str(exc_info.value).lower()
+
+
+def test_parse_name_with_spaces_allowed_via_env_var(fixtures_dir, monkeypatch):
+    """Validate NO_FAIL_ON_SPACE env var bypasses the space check."""
+    monkeypatch.setenv("NO_FAIL_ON_SPACE", "1")
+
+    parser = SkillParser()
+    skill_path = fixtures_dir / "invalid-name-with-space" / "SKILL.md"
+
+    metadata = parser.parse_skill_file(skill_path)
+
+    assert metadata.name == "my skill with spaces"
+    assert metadata.description is not None
+
+
+def test_parse_name_without_spaces_succeeds(fixtures_dir):
+    """Validate normal names without spaces parse successfully (no regression)."""
+    parser = SkillParser()
+    skill_path = fixtures_dir / "valid-basic" / "SKILL.md"
+
+    metadata = parser.parse_skill_file(skill_path)
+
+    assert metadata.name == "valid-basic"
+    assert metadata.description is not None
