@@ -316,7 +316,7 @@ langchain = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "faskill", extra = ["all"] },
+    { name = "langchain-core" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -340,7 +340,7 @@ provides-extras = ["langchain", "all"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "faskill", extras = ["all"] },
+    { name = "langchain-core", specifier = ">=1.5.3" },
     { name = "pyright", specifier = ">=1.1.411" },
     { name = "pytest", specifier = ">=7.0" },
     { name = "pytest-asyncio", specifier = ">=0.21" },

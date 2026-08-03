@@ -127,10 +127,10 @@ dev = [
     "pytest-asyncio>=0.21",
     "ruff>=0.1.0",
     "types-PyYAML",
-    "faskill[all]",
     "pyright>=1.1.411",
     # "amrita-core>=0.12.7", # TODO: Integrate AmritaCore supports
     "pytest-benchmark>=5.2.3",
+    "langchain-core>=1.5.3",
 ]
 
 [tool.pyright]
