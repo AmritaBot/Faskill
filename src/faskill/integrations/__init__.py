@@ -1,4 +1,4 @@
-"""Framework integrations for skillkit library.
+"""Framework integrations for faskill library.
 
 This module contains framework-specific adapters that require optional
 dependencies. Each integration is independently importable.

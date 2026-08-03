@@ -7,10 +7,11 @@ This module validates the ContentCache class including:
 - Concurrent access safety
 """
 
-import pytest
 import asyncio
-from skillkit.core.models import ContentCache, CacheStats
 
+import pytest
+
+from faskill.core.models import ContentCache
 
 # ==============================================================================
 # T020: ContentCache Unit Tests (User Story 1)
@@ -346,10 +347,7 @@ async def test_cache_concurrent_access_different_skills():
         assert result == f"content-{skill_name}"
 
     # Launch 10 concurrent tasks
-    tasks = [
-        put_and_get(f"skill-{i}", "args")
-        for i in range(10)
-    ]
+    tasks = [put_and_get(f"skill-{i}", "args") for i in range(10)]
     await asyncio.gather(*tasks)
 
     # Verify all entries cached

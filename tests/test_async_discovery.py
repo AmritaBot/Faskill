@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from skillkit import SkillManager
-from skillkit.core.discovery import SkillDiscovery
-from skillkit.core.exceptions import AsyncStateError
-from skillkit.core.models import InitMode
+from faskill import SkillContext
+from faskill.core.discovery import SkillDiscovery
+from faskill.core.exceptions import AsyncStateError
+from faskill.core.models import InitMode
 
 
 class TestAsyncFileIO:
@@ -105,13 +105,13 @@ class TestAsyncDiscovery:
         assert len(skill_files) > 0
 
 
-class TestSkillManagerAsync:
-    """Test SkillManager async discovery."""
+class TestSkillContextAsync:
+    """Test SkillContext async discovery."""
 
     @pytest.mark.asyncio
     async def test_adiscover_basic(self, fixtures_dir):
         """Test basic async discovery."""
-        manager = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager = SkillContext(skill_dirs=[fixtures_dir / "skills"])
 
         # Manager should start uninitialized
         assert manager.init_mode == InitMode.UNINITIALIZED
@@ -129,7 +129,9 @@ class TestSkillManagerAsync:
         # Verify we can get specific skills
         skill_names = [s.name for s in skills]
         # Should find at least one of the valid skills
-        assert any(name in skill_names for name in ["valid-basic", "code-reviewer", "arguments-test"])
+        assert any(
+            name in skill_names for name in ["valid-basic", "code-reviewer", "arguments-test"]
+        )
 
     @pytest.mark.asyncio
     async def test_adiscover_empty_directory(self, tmp_path):
@@ -137,11 +139,7 @@ class TestSkillManagerAsync:
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
 
-        manager = SkillManager(
-            project_skill_dir=empty_dir,
-            anthropic_config_dir="",  # Explicit opt-out
-            plugin_dirs=[],
-        )
+        manager = SkillContext(skill_dirs=[empty_dir])
         await manager.adiscover()
 
         # Should complete without errors
@@ -151,7 +149,7 @@ class TestSkillManagerAsync:
     @pytest.mark.asyncio
     async def test_adiscover_multiple_skills(self, fixtures_dir):
         """Test async discovery finds all valid skills."""
-        manager = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager = SkillContext(skill_dirs=[fixtures_dir / "skills"])
         await manager.adiscover()
 
         skills = manager.list_skills()
@@ -166,12 +164,12 @@ class TestSkillManagerAsync:
     async def test_async_vs_sync_discovery_equivalence(self, fixtures_dir):
         """Test that async and sync discovery produce identical results."""
         # Sync discovery
-        manager_sync = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager_sync = SkillContext(skill_dirs=[fixtures_dir / "skills"])
         manager_sync.discover()
         sync_skills = sorted([s.name for s in manager_sync.list_skills()])
 
         # Async discovery
-        manager_async = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager_async = SkillContext(skill_dirs=[fixtures_dir / "skills"])
         await manager_async.adiscover()
         async_skills = sorted([s.name for s in manager_async.list_skills()])
 
@@ -184,7 +182,7 @@ class TestAsyncStateManagement:
 
     def test_sync_then_async_raises_error(self, fixtures_dir):
         """Test that calling adiscover() after discover() raises AsyncStateError."""
-        manager = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager = SkillContext(skill_dirs=[fixtures_dir / "skills"])
 
         # Initialize with sync discovery
         manager.discover()
@@ -200,7 +198,7 @@ class TestAsyncStateManagement:
     @pytest.mark.asyncio
     async def test_async_then_sync_raises_error(self, fixtures_dir):
         """Test that calling discover() after adiscover() raises AsyncStateError."""
-        manager = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager = SkillContext(skill_dirs=[fixtures_dir / "skills"])
 
         # Initialize with async discovery
         await manager.adiscover()
@@ -216,7 +214,7 @@ class TestAsyncStateManagement:
     @pytest.mark.asyncio
     async def test_multiple_async_calls_allowed(self, fixtures_dir):
         """Test that multiple adiscover() calls are allowed."""
-        manager = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager = SkillContext(skill_dirs=[fixtures_dir / "skills"])
 
         # First async discovery
         await manager.adiscover()
@@ -232,7 +230,7 @@ class TestAsyncStateManagement:
 
     def test_multiple_sync_calls_allowed(self, fixtures_dir):
         """Test that multiple discover() calls are allowed."""
-        manager = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager = SkillContext(skill_dirs=[fixtures_dir / "skills"])
 
         # First sync discovery
         manager.discover()
@@ -250,13 +248,13 @@ class TestAsyncStateManagement:
     async def test_fresh_manager_can_use_either_mode(self, fixtures_dir):
         """Test that a fresh manager can use either sync or async."""
         # Fresh manager for async
-        manager_async = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager_async = SkillContext(skill_dirs=[fixtures_dir / "skills"])
         assert manager_async.init_mode == InitMode.UNINITIALIZED
         await manager_async.adiscover()
         assert manager_async.init_mode == InitMode.ASYNC
 
         # Fresh manager for sync
-        manager_sync = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager_sync = SkillContext(skill_dirs=[fixtures_dir / "skills"])
         assert manager_sync.init_mode == InitMode.UNINITIALIZED
         manager_sync.discover()
         assert manager_sync.init_mode == InitMode.SYNC
@@ -269,10 +267,7 @@ class TestAsyncConcurrency:
     async def test_concurrent_async_discovery_different_managers(self, fixtures_dir):
         """Test that multiple managers can discover concurrently."""
         # Create multiple managers
-        managers = [
-            SkillManager(project_skill_dir=fixtures_dir / "skills")
-            for _ in range(5)
-        ]
+        managers = [SkillContext(skill_dirs=[fixtures_dir / "skills"]) for _ in range(5)]
 
         # Discover concurrently
         await asyncio.gather(*[m.adiscover() for m in managers])
@@ -285,7 +280,7 @@ class TestAsyncConcurrency:
     @pytest.mark.asyncio
     async def test_event_loop_remains_responsive(self, fixtures_dir):
         """Test that event loop remains responsive during async discovery."""
-        manager = SkillManager(project_skill_dir=fixtures_dir / "skills")
+        manager = SkillContext(skill_dirs=[fixtures_dir / "skills"])
         counter = {"value": 0}
 
         async def increment_counter():
@@ -295,10 +290,7 @@ class TestAsyncConcurrency:
                 await asyncio.sleep(0.001)  # Small delay
 
         # Run discovery and counter concurrently
-        await asyncio.gather(
-            manager.adiscover(),
-            increment_counter()
-        )
+        await asyncio.gather(manager.adiscover(), increment_counter())
 
         # Both should complete
         assert manager.init_mode == InitMode.ASYNC

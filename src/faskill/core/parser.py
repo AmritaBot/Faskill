@@ -13,7 +13,7 @@ from typing import Any, Dict
 
 import yaml
 
-from skillkit.core.exceptions import (
+from faskill.core.exceptions import (
     InvalidFrontmatterError,
     InvalidYAMLError,
     ManifestNotFoundError,
@@ -21,7 +21,7 @@ from skillkit.core.exceptions import (
     ManifestValidationError,
     MissingRequiredFieldError,
 )
-from skillkit.core.models import PluginManifest, SkillMetadata
+from faskill.core.models import PluginManifest, SkillMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class SkillParser:
             >>> print(f"{metadata.name}: {metadata.description}")
             code-reviewer: Review code for best practices
         """
-        from skillkit.core.exceptions import ContentLoadError
+        from faskill.core.exceptions import ContentLoadError
 
         # Read file with UTF-8-sig encoding (auto-strips BOM)
         try:

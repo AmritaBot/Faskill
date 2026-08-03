@@ -1,5 +1,5 @@
 """
-Edge Case Tests for skillkit Library
+Edge Case Tests for faskill Library
 
 Tests edge cases and error handling scenarios including:
 - Missing required fields
@@ -14,19 +14,14 @@ Tests edge cases and error handling scenarios including:
 All tests use fixtures from conftest.py and tests/fixtures/skills/.
 """
 
-import os
-import sys
 import logging
+import sys
 from pathlib import Path
 
 import pytest
 
-from skillkit.core.manager import SkillManager
-from skillkit.core.exceptions import (
-    MissingRequiredFieldError,
-    InvalidYAMLError,
-    ContentLoadError,
-)
+from faskill.core.exceptions import ContentLoadError
+from faskill.core.manager import SkillContext
 
 
 def test_missing_required_field_logs_error_and_continues(
@@ -34,18 +29,12 @@ def test_missing_required_field_logs_error_and_continues(
 ):
     """Test that discovery skips invalid skill with ERROR log when required field missing."""
     # Create one valid skill and one invalid skill (missing name)
-    skill_factory(
-        name="valid-skill",
-        description="A valid skill",
-        content="This skill is valid",
-    )
+    skill_factory(name="valid-skill", description="A valid skill", content="This skill is valid")
 
     # Create invalid skill (missing name field)
     invalid_dir = temp_skills_dir / "invalid-skill"
     invalid_dir.mkdir(parents=True)
-    (invalid_dir / "SKILL.md").write_text(
-        "---\ndescription: Missing name field\n---\nContent here"
-    )
+    (invalid_dir / "SKILL.md").write_text("---\ndescription: Missing name field\n---\nContent here")
 
     # Discover skills with logging capture
     with caplog.at_level(logging.ERROR):
@@ -81,18 +70,12 @@ def test_invalid_yaml_syntax_raises_validation_error(isolated_manager, temp_skil
     assert len(skills) == 0  # Invalid skill not discovered
 
 
-def test_content_load_error_when_file_deleted_after_discovery(
-    temp_skills_dir: Path, skill_factory
-):
+def test_content_load_error_when_file_deleted_after_discovery(temp_skills_dir: Path, skill_factory):
     """Test that ContentLoadError is raised when skill file deleted after discovery."""
     # Create skill and discover it
-    skill_factory(
-        name="test-skill",
-        description="Test skill",
-        content="Original content",
-    )
+    skill_factory(name="test-skill", description="Test skill", content="Original content")
 
-    manager = SkillManager(str(temp_skills_dir))
+    manager = SkillContext(skill_dirs=[str(temp_skills_dir)])
     manager.discover()
     skill = manager.load_skill("test-skill")
 
@@ -178,7 +161,7 @@ def test_large_skill_lazy_loading_works(fixtures_dir: Path):
     assert file_size > 500_000, f"Large skill file too small: {file_size} bytes"
 
     # Discover and load skill
-    manager = SkillManager(str(fixtures_dir))
+    manager = SkillContext(skill_dirs=[str(fixtures_dir)])
     manager.discover()
     skill = manager.load_skill("large-content-skill")
 
@@ -191,11 +174,7 @@ def test_large_skill_lazy_loading_works(fixtures_dir: Path):
 def test_symlink_in_skill_directory_handled(temp_skills_dir: Path, skill_factory):
     """Test that symlinks are followed/handled correctly."""
     # Create a real skill
-    skill_factory(
-        name="real-skill",
-        description="Real skill",
-        content="Real content",
-    )
+    skill_factory(name="real-skill", description="Real skill", content="Real content")
     real_skill_dir = temp_skills_dir / "real-skill"
 
     # Create symlink to skill directory
@@ -206,7 +185,7 @@ def test_symlink_in_skill_directory_handled(temp_skills_dir: Path, skill_factory
         pytest.skip("Symlinks not supported on this platform")
 
     # Discover skills
-    manager = SkillManager(str(temp_skills_dir))
+    manager = SkillContext(skill_dirs=[str(temp_skills_dir)])
     manager.discover()
     skills = manager.list_skills()
 
@@ -226,7 +205,7 @@ def test_windows_line_endings_handled_on_unix(temp_skills_dir: Path):
     (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
 
     # Discover and load skill
-    manager = SkillManager(str(temp_skills_dir))
+    manager = SkillContext(skill_dirs=[str(temp_skills_dir)])
     manager.discover()
     skill = manager.load_skill("windows-skill")
 

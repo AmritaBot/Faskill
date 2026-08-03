@@ -10,8 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from skillkit.core.discovery import SkillDiscovery, discover_plugin_manifest
-from skillkit.core.models import SkillSource, SourceType
+from faskill.core.discovery import SkillDiscovery, discover_plugin_manifest
+from faskill.core.models import SkillSource, SourceType
+
+PLUGIN_DIR = Path(__file__).parent / "fixtures" / "plugins"
 
 
 class TestDiscoverPluginManifest:
@@ -19,7 +21,7 @@ class TestDiscoverPluginManifest:
 
     def test_discover_valid_manifest(self):
         """Test discovering a valid plugin manifest."""
-        plugin_dir = Path("tests/fixtures/plugins/valid-plugin")
+        plugin_dir = PLUGIN_DIR / "valid-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -33,7 +35,7 @@ class TestDiscoverPluginManifest:
 
     def test_discover_multi_dir_manifest(self):
         """Test discovering plugin with multiple skill directories."""
-        plugin_dir = Path("tests/fixtures/plugins/multi-dir-plugin")
+        plugin_dir = PLUGIN_DIR / "multi-dir-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -46,7 +48,7 @@ class TestDiscoverPluginManifest:
 
     def test_discover_missing_manifest(self):
         """Test graceful handling when manifest doesn't exist."""
-        plugin_dir = Path("tests/fixtures/plugins/missing-manifest-plugin")
+        plugin_dir = PLUGIN_DIR / "missing-manifest-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -57,7 +59,7 @@ class TestDiscoverPluginManifest:
 
     def test_discover_invalid_manifest(self):
         """Test graceful handling of invalid manifest (missing required fields)."""
-        plugin_dir = Path("tests/fixtures/plugins/invalid-manifest-plugin")
+        plugin_dir = PLUGIN_DIR / "invalid-manifest-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -69,7 +71,7 @@ class TestDiscoverPluginManifest:
 
     def test_discover_malformed_json(self):
         """Test graceful handling of malformed JSON."""
-        plugin_dir = Path("tests/fixtures/plugins/malformed-json-plugin")
+        plugin_dir = PLUGIN_DIR / "malformed-json-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -81,7 +83,7 @@ class TestDiscoverPluginManifest:
 
     def test_discover_path_traversal_manifest(self):
         """Test graceful handling of security violations."""
-        plugin_dir = Path("tests/fixtures/plugins/path-traversal-plugin")
+        plugin_dir = PLUGIN_DIR / "path-traversal-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -105,7 +107,7 @@ class TestSkillDiscoveryWithPlugins:
 
     def test_discover_skills_from_plugin_single_dir(self):
         """Test discovering skills from plugin with single skill directory."""
-        plugin_dir = Path("tests/fixtures/plugins/valid-plugin")
+        plugin_dir = PLUGIN_DIR / "valid-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -130,7 +132,7 @@ class TestSkillDiscoveryWithPlugins:
 
     def test_discover_skills_from_plugin_multiple_dirs(self):
         """Test discovering skills from plugin with multiple skill directories."""
-        plugin_dir = Path("tests/fixtures/plugins/multi-dir-plugin")
+        plugin_dir = PLUGIN_DIR / "multi-dir-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -159,7 +161,7 @@ class TestSkillDiscoveryWithPlugins:
 
     def test_discover_skills_from_plugin_without_manifest(self):
         """Test discovering skills from plugin source without manifest."""
-        plugin_dir = Path("tests/fixtures/plugins/missing-manifest-plugin")
+        plugin_dir = PLUGIN_DIR / "missing-manifest-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -187,7 +189,7 @@ class TestSkillDiscoveryWithPlugins:
         (skill_dir / "SKILL.md").write_text("---\nname: test\ndescription: Test\n---\n")
 
         source = SkillSource(
-            source_type=SourceType.PROJECT,
+            source_type=SourceType.CUSTOM,
             directory=tmp_path / "skills",
             priority=100,
         )
@@ -205,7 +207,7 @@ class TestAsyncPluginDiscovery:
     @pytest.mark.asyncio
     async def test_adiscover_skills_from_plugin_single_dir(self):
         """Test async discovery of skills from plugin with single directory."""
-        plugin_dir = Path("tests/fixtures/plugins/valid-plugin")
+        plugin_dir = PLUGIN_DIR / "valid-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
@@ -230,7 +232,7 @@ class TestAsyncPluginDiscovery:
     @pytest.mark.asyncio
     async def test_adiscover_skills_from_plugin_multiple_dirs(self):
         """Test async discovery from plugin with multiple skill directories."""
-        plugin_dir = Path("tests/fixtures/plugins/multi-dir-plugin")
+        plugin_dir = PLUGIN_DIR / "multi-dir-plugin"
 
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")

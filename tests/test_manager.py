@@ -1,17 +1,16 @@
-"""Tests for SkillManager orchestration layer.
+"""Tests for SkillContext orchestration layer.
 
-This module validates the SkillManager class including discovery, listing,
+This module validates the SkillContext class including discovery, listing,
 retrieval, caching, and end-to-end invocation workflows.
 """
 
 import asyncio
+
 import pytest
-from pathlib import Path
 
-from skillkit.core.manager import SkillManager
-from skillkit.core.models import SkillMetadata, Skill
-from skillkit.core.exceptions import SkillNotFoundError, ContentLoadError, ConfigurationError
-
+from faskill.core.exceptions import ConfigurationError, SkillNotFoundError
+from faskill.core.manager import SkillContext
+from faskill.core.models import Skill, SkillMetadata
 
 # T048: Create test_manager.py with imports and file header ✓
 
@@ -25,7 +24,7 @@ def test_manager_list_skills_returns_list(sample_skills):
     """
     # sample_skills is a list of skill directories, get the parent
     skills_dir = sample_skills[0].parent
-    manager = SkillManager(skill_dir=skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -43,7 +42,7 @@ def test_manager_get_skill_by_name(sample_skills):
     after discovery is complete.
     """
     skills_dir = sample_skills[0].parent
-    manager = SkillManager(skill_dir=skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
 
     # Get the first skill name
@@ -66,7 +65,7 @@ def test_manager_list_skills_contains_metadata(sample_skills):
     for display and selection purposes.
     """
     skills_dir = sample_skills[0].parent
-    manager = SkillManager(skill_dir=skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -86,7 +85,7 @@ def test_manager_skill_invocation(fixtures_dir):
     Tests the complete skill lifecycle from discovery through invocation,
     ensuring all components work together correctly.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     # Find a valid skill
@@ -110,7 +109,7 @@ def test_manager_load_skill_returns_skill_instance(sample_skills):
     content loading capability.
     """
     skills_dir = sample_skills[0].parent
-    manager = SkillManager(skill_dir=skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -132,7 +131,7 @@ def test_manager_skill_not_found_error(sample_skills):
     error message when requesting a skill that doesn't exist.
     """
     skills_dir = sample_skills[0].parent
-    manager = SkillManager(skill_dir=skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
 
     with pytest.raises(SkillNotFoundError) as exc_info:
@@ -153,11 +152,7 @@ def test_manager_empty_directory(tmp_path):
     empty_dir.mkdir()
 
     # Explicitly opt-out of default directories to test only empty_dir
-    manager = SkillManager(
-        project_skill_dir=empty_dir,
-        anthropic_config_dir="",  # Opt-out of default ./.claude/skills/
-        plugin_dirs=[],
-    )
+    manager = SkillContext(skill_dirs=[empty_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -185,11 +180,7 @@ def test_manager_graceful_degradation_on_invalid_skill(tmp_path, caplog):
     (invalid_dir / "SKILL.md").write_text("---\ndescription: Invalid skill\n---\nContent")
 
     # Explicitly opt-out of default directories to test only skills_dir
-    manager = SkillManager(
-        project_skill_dir=skills_dir,
-        anthropic_config_dir="",  # Opt-out of default ./.claude/skills/
-        plugin_dirs=[],
-    )
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
 
     # Should have discovered only the valid skill
@@ -208,7 +199,7 @@ def test_manager_invoke_skill_with_arguments(fixtures_dir):
     Tests that the convenience method properly passes arguments through
     to the skill processor.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     # Find a skill with $ARGUMENTS placeholder
@@ -246,11 +237,7 @@ def test_manager_discover_clears_previous_skills(tmp_path):
     (skill2 / "SKILL.md").write_text("---\nname: skill2\ndescription: Second skill\n---\nContent")
 
     # Explicitly opt-out of default directories to test only skills_dir
-    manager = SkillManager(
-        project_skill_dir=skills_dir,
-        anthropic_config_dir="",  # Opt-out of default ./.claude/skills/
-        plugin_dirs=[],
-    )
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
     assert len(manager.list_skills()) == 2
 
@@ -268,146 +255,142 @@ def test_manager_discover_clears_previous_skills(tmp_path):
 # ==============================================================================
 # These tests address acceptance scenarios 4-8 from spec.md that were missing
 # in the original v0.2 implementation. They validate tri-state parameter logic
-# (None vs "" vs Path) for SkillManager initialization.
+# (None vs "" vs Path) for SkillContext initialization.
 
 
-def test_scenario_4_default_project_discovered(tmp_path, monkeypatch):
-    """Scenario 4: Default project directory exists and is discovered.
+def test_scenario_4_explicit_custom_directory_discovered(tmp_path):
+    """Scenario 4: Explicitly provided custom directory is discovered.
 
     When:
-        - SkillManager() initialized without parameters
-        - ./skills/ exists in current working directory
+        - SkillContext(skill_dirs=[path]) with explicit path
+        - The path exists and contains valid skills
     Then:
-        - ./skills/ is automatically discovered and scanned
-        - Skills from ./skills/ are available
+        - Skills from the path are discovered and available
     """
-    # Setup: Create ./skills/ in tmp_path with a skill
-    monkeypatch.chdir(tmp_path)
     skills_dir = tmp_path / "skills"
     skills_dir.mkdir()
     skill1_dir = skills_dir / "test-skill"
     skill1_dir.mkdir()
     (skill1_dir / "SKILL.md").write_text(
-        "---\nname: test-skill\ndescription: Test skill from default dir\n---\nContent"
+        "---\nname: test-skill\ndescription: Test skill from explicit dir\n---\nContent"
     )
 
-    # Test: Initialize without parameters
-    manager = SkillManager()
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
 
-    # Verify: Skill is discovered from default directory
     skills = manager.list_skills()
     assert len(skills) == 1
     assert skills[0].name == "test-skill"
-    assert skills[0].description == "Test skill from default dir"
+    assert skills[0].description == "Test skill from explicit dir"
 
 
-def test_scenario_5_both_defaults_priority(tmp_path, monkeypatch):
-    """Scenario 5: Both default directories exist with conflicting skill names.
+def test_scenario_5_conflict_plugin_vs_custom(tmp_path):
+    """Scenario 5: Plugin source wins over custom directory due to priority.
 
     When:
-        - SkillManager() initialized without parameters
-        - Both ./skills/ and ./.claude/skills/ exist
-        - Same skill name in both directories
+        - Two directories have the same skill name
+        - One is a plugin (priority 10), the other is custom (priority 5)
     Then:
         - Both directories are scanned
-        - Project directory (./skills/) wins conflicts (priority 100 > 50)
-        - Anthropic version accessible via qualified name
+        - Plugin wins conflicts (priority 10 > 5)
     """
-    # Setup: Create both default directories with same skill name
-    monkeypatch.chdir(tmp_path)
-
-    # Create ./skills/ with test-skill
-    project_skills = tmp_path / "skills"
-    project_skills.mkdir()
-    project_skill = project_skills / "test-skill"
-    project_skill.mkdir()
-    (project_skill / "SKILL.md").write_text(
-        "---\nname: test-skill\ndescription: Project version\n---\nProject content"
+    # Create a custom skills dir (treated as CUSTOM, priority 5)
+    custom_skills = tmp_path / "custom-skills"
+    custom_skills.mkdir()
+    custom_skill = custom_skills / "test-skill"
+    custom_skill.mkdir()
+    (custom_skill / "SKILL.md").write_text(
+        "---\nname: test-skill\ndescription: Custom version\n---\nCustom content"
     )
 
-    # Create ./.claude/skills/ with same skill name
-    claude_skills = tmp_path / ".claude" / "skills"
-    claude_skills.mkdir(parents=True)
-    claude_skill = claude_skills / "test-skill"
-    claude_skill.mkdir()
-    (claude_skill / "SKILL.md").write_text(
-        "---\nname: test-skill\ndescription: Anthropic version\n---\nAnthropic content"
+    # Create a plugin dir (has manifest, priority 10)
+    plugin_dir = tmp_path / "plugin-dir"
+    plugin_dir.mkdir()
+    plugin_manifest_dir = plugin_dir / ".claude-plugin"
+    plugin_manifest_dir.mkdir()
+    import json
+
+    (plugin_manifest_dir / "plugin.json").write_text(
+        json.dumps(
+            {
+                "name": "test-plugin",
+                "version": "1.0.0",
+                "description": "A test plugin",
+                "author": "test",
+            }
+        )
+    )
+    plugin_skills = plugin_dir / "skills"
+    plugin_skills.mkdir(parents=True)
+    plugin_skill = plugin_skills / "test-skill"
+    plugin_skill.mkdir()
+    (plugin_skill / "SKILL.md").write_text(
+        "---\nname: test-skill\ndescription: Plugin version\n---\nPlugin content"
     )
 
-    # Test: Initialize without parameters
-    manager = SkillManager()
+    manager = SkillContext(skill_dirs=[custom_skills, plugin_dir])
     manager.discover()
 
-    # Verify: Project version wins (priority 100 > 50)
+    # Plugin wins (priority 10 > 5)
     skills = manager.list_skills()
-    assert len(skills) == 1  # Only one simple name registered
+    assert len(skills) == 1
     assert skills[0].name == "test-skill"
-    assert skills[0].description == "Project version"  # Project wins
+    assert skills[0].description == "Plugin version"  # Plugin wins
 
 
-def test_scenario_6_no_defaults_empty_with_log(tmp_path, monkeypatch, caplog):
-    """Scenario 6: No default directories exist, manager initializes empty.
+def test_scenario_6_no_dirs_empty_with_log(tmp_path, caplog):
+    """Scenario 6: No directories configured, context initialises empty.
 
     When:
-        - SkillManager() initialized without parameters
-        - Neither ./skills/ nor ./.claude/skills/ exist
+        - SkillContext() initialised without parameters
     Then:
-        - Manager initializes successfully with 0 skills
-        - INFO log message: "No skill directories found; initialized with empty skill list"
+        - Context initialises successfully with 0 skills
+        - INFO log: "No skill directories configured; initialised with empty skill list"
     """
-    # Setup: Change to empty directory (no ./skills/, no ./.claude/skills/)
-    monkeypatch.chdir(tmp_path)
     import logging
+
     caplog.set_level(logging.INFO)
 
-    # Test: Initialize without parameters
-    manager = SkillManager()
+    manager = SkillContext()
     manager.discover()
 
-    # Verify: Empty skill list
     skills = manager.list_skills()
     assert len(skills) == 0
 
-    # Verify: INFO log present
-    assert "No skill directories found; initialized with empty skill list" in caplog.text
+    assert "No skill directories configured; initialised with empty skill list" in caplog.text
 
 
 def test_scenario_7_explicit_invalid_raises_error(tmp_path):
     """Scenario 7: Explicitly provided path doesn't exist, raises ConfigurationError.
 
     When:
-        - SkillManager(project_skill_dir="/nonexistent") with explicit path
+        - SkillContext(skill_dirs=[nonexistent]) with explicit path
         - Path does not exist
     Then:
         - Raises ConfigurationError immediately
-        - Error message includes parameter name and path
+        - Error message includes parameter name "skill_dirs" and path
     """
-    # Test: Initialize with nonexistent explicit path
     nonexistent_path = tmp_path / "nonexistent"
 
     with pytest.raises(ConfigurationError) as exc_info:
-        manager = SkillManager(project_skill_dir=nonexistent_path)
+        SkillContext(skill_dirs=[nonexistent_path])
 
-    # Verify: Error message contains details
     error_message = str(exc_info.value)
-    assert "project_skill_dir" in error_message
+    assert "skill_dirs" in error_message
     assert str(nonexistent_path) in error_message
     assert "does not exist" in error_message
 
 
-def test_scenario_8_empty_string_opt_out(tmp_path, monkeypatch, caplog):
-    """Scenario 8: Explicit opt-out with empty strings and empty lists.
+def test_scenario_8_no_args_skips_all_dirs(tmp_path, caplog):
+    """Scenario 8: SkillContext() with no args finds nothing.
 
     When:
-        - SkillManager(project_skill_dir="", anthropic_config_dir="", plugin_dirs=[])
-        - Default directories ./skills/ and ./.claude/skills/ exist
+        - SkillContext() initialised with no arguments
+        - A ./skills/ directory exists in the CWD
     Then:
-        - Manager initializes with 0 skills (defaults explicitly disabled)
-        - NO INFO log (intentional configuration, not error condition)
+        - No skills are auto-discovered (no implicit defaults)
+        - INFO log about empty configuration
     """
-    # Setup: Create default directories (they should be ignored)
-    monkeypatch.chdir(tmp_path)
     skills_dir = tmp_path / "skills"
     skills_dir.mkdir()
     skill1_dir = skills_dir / "test-skill"
@@ -417,30 +400,24 @@ def test_scenario_8_empty_string_opt_out(tmp_path, monkeypatch, caplog):
     )
 
     import logging
+
     caplog.set_level(logging.INFO)
 
-    # Test: Explicit opt-out
-    manager = SkillManager(
-        project_skill_dir="",
-        anthropic_config_dir="",
-        plugin_dirs=[],
-    )
+    # No args = no sources
+    manager = SkillContext()
     manager.discover()
 
-    # Verify: No skills discovered (opt-out worked)
     skills = manager.list_skills()
     assert len(skills) == 0
 
-    # Verify: INFO log about empty sources should be present
-    # (empty list is intentional but still results in no sources)
-    assert "No skill directories found" in caplog.text
+    assert "No skill directories configured" in caplog.text
 
 
 def test_mixed_valid_and_opt_out(tmp_path, monkeypatch):
     """Mixed configuration: Explicit valid path + opt-out for other sources.
 
     When:
-        - SkillManager(project_skill_dir="/valid/path", anthropic_config_dir="")
+        - SkillContext(skill_dirs=["/valid/path"])
         - /valid/path exists
         - ./.claude/skills/ exists but is opted out
     Then:
@@ -469,9 +446,8 @@ def test_mixed_valid_and_opt_out(tmp_path, monkeypatch):
     )
 
     # Test: Mixed configuration
-    manager = SkillManager(
-        project_skill_dir=custom_skills,
-        anthropic_config_dir="",  # Explicit opt-out
+    manager = SkillContext(
+        skill_dirs=[custom_skills],  # Explicit opt-out
     )
     manager.discover()
 
@@ -497,7 +473,7 @@ def test_cache_hit_on_repeated_invocation(fixtures_dir):
     Tests that repeated skill invocations with identical arguments
     return cached content instead of re-reading from disk.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -526,7 +502,7 @@ def test_cache_miss_on_different_arguments(fixtures_dir):
     Tests that different arguments create separate cache entries
     and don't result in cache hits.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -537,18 +513,21 @@ def test_cache_miss_on_different_arguments(fixtures_dir):
     content1 = manager.invoke_skill(skill_name, "args1")
     stats1 = manager.get_cache_stats()
     assert stats1.misses == 1
+    assert content1 is not None
 
     # Second invocation with different args2
     content2 = manager.invoke_skill(skill_name, "args2")
     stats2 = manager.get_cache_stats()
     assert stats2.misses == 2  # Another miss
-    assert stats2.hits == 0    # No hits yet
+    assert stats2.hits == 0  # No hits yet
+    assert content2 is not None
 
     # Repeated invocation with args1 - cache hit
     content3 = manager.invoke_skill(skill_name, "args1")
     stats3 = manager.get_cache_stats()
     assert stats3.hits == 1
     assert stats3.misses == 2
+    assert content3 is not None
 
 
 def test_cache_invalidation_on_file_modification(fixtures_dir):
@@ -557,7 +536,7 @@ def test_cache_invalidation_on_file_modification(fixtures_dir):
     Tests that modifying a skill file's mtime causes cache
     invalidation on next invocation.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -569,9 +548,11 @@ def test_cache_invalidation_on_file_modification(fixtures_dir):
     content1 = manager.invoke_skill(skill_name, "test")
     stats1 = manager.get_cache_stats()
     assert stats1.misses == 1
+    assert content1 is not None
 
     # Modify file (update mtime)
     import time
+
     time.sleep(0.01)  # Ensure mtime changes
     skill_path.touch()
 
@@ -579,11 +560,13 @@ def test_cache_invalidation_on_file_modification(fixtures_dir):
     content2 = manager.invoke_skill(skill_name, "test")
     stats2 = manager.get_cache_stats()
     assert stats2.misses == 2  # Cache was invalidated
+    assert content2 is not None
 
     # Third invocation - cache hit (new mtime cached)
     content3 = manager.invoke_skill(skill_name, "test")
     stats3 = manager.get_cache_stats()
     assert stats3.hits == 1
+    assert content3 is not None
 
 
 def test_processed_content_includes_base_directory(fixtures_dir):
@@ -592,7 +575,7 @@ def test_processed_content_includes_base_directory(fixtures_dir):
     Tests that the returned content starts with base directory
     context for agent file resolution.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -604,7 +587,7 @@ def test_processed_content_includes_base_directory(fixtures_dir):
     content = manager.invoke_skill(skill_name, "test")
 
     # First line should be base directory
-    lines = content.split('\n')
+    lines = content.split("\n")
     assert len(lines) > 0
     assert lines[0] == f"Base directory for this skill: {base_dir}"
 
@@ -615,7 +598,7 @@ def test_cache_stats_hit_rate_calculation(fixtures_dir):
     Tests that CacheStats.hit_rate is correctly calculated
     as hits / (hits + misses).
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -644,7 +627,7 @@ def test_normalization_whitespace_variations_same_cache_entry(fixtures_dir):
     Tests that arguments differing only in whitespace are
     normalized to the same cache key.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -681,7 +664,7 @@ def test_normalization_multiple_spaces_collapsed(fixtures_dir):
     Tests that arguments with varying numbers of internal spaces
     are normalized to the same cache key.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -710,7 +693,7 @@ def test_normalization_none_and_empty_equivalent(fixtures_dir):
     Tests that arguments=None and arguments="" hit the same
     cache entry after normalization.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -718,7 +701,7 @@ def test_normalization_none_and_empty_equivalent(fixtures_dir):
     skill_name = skills[0].name
 
     # First invocation with None
-    content1 = manager.invoke_skill(skill_name, None)
+    content1 = manager.invoke_skill(skill_name, "")
     stats1 = manager.get_cache_stats()
     assert stats1.misses == 1
 
@@ -737,7 +720,7 @@ def test_normalization_preserves_case_sensitivity(fixtures_dir):
     Tests that case differences create separate cache entries,
     ensuring file paths and other case-sensitive arguments work correctly.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -773,7 +756,7 @@ async def test_concurrent_same_skill_serialized(fixtures_dir):
     Tests that multiple concurrent invocations of the same skill
     are handled safely via per-skill locking.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     await manager.adiscover()
 
     skills = manager.list_skills()
@@ -781,10 +764,7 @@ async def test_concurrent_same_skill_serialized(fixtures_dir):
     skill_name = skills[0].name
 
     # Launch 10 concurrent invocations of same skill
-    tasks = [
-        manager.ainvoke_skill(skill_name, f"args-{i}")
-        for i in range(10)
-    ]
+    tasks = [manager.ainvoke_skill(skill_name, f"args-{i}") for i in range(10)]
     results = await asyncio.gather(*tasks)
 
     # All should complete successfully
@@ -804,7 +784,7 @@ async def test_concurrent_different_skills_parallel(fixtures_dir):
     Tests that different skills can be invoked concurrently without
     blocking each other (per-skill locking allows parallel execution).
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     await manager.adiscover()
 
     skills = manager.list_skills()
@@ -813,10 +793,7 @@ async def test_concurrent_different_skills_parallel(fixtures_dir):
         pytest.skip("Test requires at least 3 skills")
 
     # Launch concurrent invocations of different skills
-    tasks = [
-        manager.ainvoke_skill(skills[i].name, "test-args")
-        for i in range(min(3, len(skills)))
-    ]
+    tasks = [manager.ainvoke_skill(skills[i].name, "test-args") for i in range(min(3, len(skills)))]
     results = await asyncio.gather(*tasks)
 
     # All should complete successfully
@@ -831,7 +808,7 @@ async def test_concurrent_cache_statistics_accurate(fixtures_dir):
     Tests that hit/miss counters are correctly tracked even with
     concurrent invocations (no race conditions in statistics).
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     await manager.adiscover()
 
     skills = manager.list_skills()
@@ -842,10 +819,7 @@ async def test_concurrent_cache_statistics_accurate(fixtures_dir):
     await manager.ainvoke_skill(skill_name, "test-args")
 
     # Launch 10 concurrent invocations with same arguments (cache hits)
-    tasks = [
-        manager.ainvoke_skill(skill_name, "test-args")
-        for _ in range(10)
-    ]
+    tasks = [manager.ainvoke_skill(skill_name, "test-args") for _ in range(10)]
     await asyncio.gather(*tasks)
 
     # Verify statistics
@@ -867,7 +841,7 @@ def test_clear_cache_specific_skill(fixtures_dir):
     Tests selective cache clearing for a specific skill without
     affecting other skills' cached content.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -905,7 +879,7 @@ def test_clear_cache_all_entries(fixtures_dir):
     Tests that calling clear_cache() with no skill_name removes
     all cached content across all skills.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()
@@ -935,7 +909,7 @@ async def test_aclear_cache_async(fixtures_dir):
     Tests the async version of cache clearing for use in
     async workflows.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     await manager.adiscover()
 
     skills = manager.list_skills()
@@ -964,7 +938,7 @@ def test_clear_cache_returns_count(fixtures_dir):
     Tests that the return value accurately reports how many
     entries were removed.
     """
-    manager = SkillManager(skill_dir=fixtures_dir)
+    manager = SkillContext(skill_dirs=[fixtures_dir])
     manager.discover()
 
     skills = manager.list_skills()

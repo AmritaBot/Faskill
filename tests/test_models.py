@@ -5,12 +5,9 @@ validation, lazy content loading, and caching behavior.
 """
 
 import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch
 
-from skillkit.core.models import SkillMetadata, Skill
-from skillkit.core.exceptions import ContentLoadError
-
+from faskill.core.exceptions import ContentLoadError
+from faskill.core.models import Skill, SkillMetadata
 
 # T035: Create test_models.py with imports and file header ✓
 

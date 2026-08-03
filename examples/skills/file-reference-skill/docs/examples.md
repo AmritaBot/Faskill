@@ -5,8 +5,8 @@
 Process a CSV file using the skill's data processor:
 
 ```python
-from skillkit import SkillManager
-from skillkit.core.path_resolver import FilePathResolver
+from faskill import SkillManager
+from faskill.core.path_resolver import FilePathResolver
 from pathlib import Path
 
 # Initialize skill manager
@@ -28,7 +28,7 @@ Read and execute supporting scripts:
 
 ```python
 from pathlib import Path
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.path_resolver import FilePathResolver
 
 # Get skill's base directory
 skill = manager.get_skill("file-reference-skill")
@@ -54,7 +54,7 @@ Load and parse configuration template:
 
 ```python
 import yaml
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.path_resolver import FilePathResolver
 
 # Resolve config template path
 config_path = FilePathResolver.resolve_path(
@@ -74,8 +74,8 @@ print("Configuration:", config)
 Demonstrate path traversal prevention:
 
 ```python
-from skillkit.core.path_resolver import FilePathResolver
-from skillkit.core.exceptions import PathSecurityError
+from faskill.core.path_resolver import FilePathResolver
+from faskill.core.exceptions import PathSecurityError
 
 try:
     # Attempt path traversal (will be blocked)
@@ -96,7 +96,7 @@ Use validator script to check input files:
 
 ```python
 import subprocess
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.path_resolver import FilePathResolver
 
 # Resolve validator script
 validator_path = FilePathResolver.resolve_path(
@@ -121,7 +121,7 @@ Generate report using template:
 ```python
 from string import Template
 from datetime import datetime
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.path_resolver import FilePathResolver
 
 # Resolve report template
 template_path = FilePathResolver.resolve_path(
@@ -162,7 +162,7 @@ Execute shell helper script:
 
 ```python
 import subprocess
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.path_resolver import FilePathResolver
 
 # Resolve shell script
 helper_path = FilePathResolver.resolve_path(
@@ -185,7 +185,7 @@ print(result.stdout)
 Access multiple supporting files in one operation:
 
 ```python
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.path_resolver import FilePathResolver
 
 # List of files to access
 file_paths = [
@@ -214,8 +214,8 @@ Robust error handling when accessing supporting files:
 
 ```python
 from pathlib import Path
-from skillkit.core.path_resolver import FilePathResolver
-from skillkit.core.exceptions import PathSecurityError
+from faskill.core.path_resolver import FilePathResolver
+from faskill.core.exceptions import PathSecurityError
 
 def safe_load_supporting_file(base_dir: Path, rel_path: str) -> str:
     """Safely load supporting file with comprehensive error handling."""
@@ -254,6 +254,7 @@ except Exception as e:
 ## Summary
 
 These examples demonstrate:
+
 - Secure file path resolution using FilePathResolver
 - Accessing scripts, templates, and documentation
 - Handling security violations gracefully

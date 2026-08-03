@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Basic usage example for skillkit library.
+"""Basic usage example for faskill library.
 
 This script demonstrates standalone usage without framework integration.
 Shows both sync (v0.1) and async (v0.2) patterns.
@@ -9,7 +9,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from skillkit import SkillManager
+from faskill import SkillContext
 
 # Configure logging to see skill discovery and invocation
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(mes
 def sync_example() -> None:
     """Demonstrate sync skill manager usage (v0.1 compatible)."""
     print("=" * 60)
-    print("skillkit: Basic Usage Example (Sync)")
+    print("faskill: Basic Usage Example (Sync)")
     print("=" * 60)
 
     # Use example skills from examples/skills/ directory
@@ -26,7 +26,7 @@ def sync_example() -> None:
     print(f"\nUsing skills directory: {skills_dir}")
 
     # Create skill manager
-    manager = SkillManager(skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
 
     # Discover skills
     print("\n[1] Discovering skills...")
@@ -86,7 +86,7 @@ def sync_example() -> None:
 async def async_example() -> None:
     """Demonstrate async skill manager usage (v0.2+)."""
     print("\n\n" + "=" * 60)
-    print("skillkit: Basic Usage Example (Async)")
+    print("faskill: Basic Usage Example (Async)")
     print("=" * 60)
 
     # Use example skills from examples/skills/ directory
@@ -94,7 +94,7 @@ async def async_example() -> None:
     print(f"\nUsing skills directory: {skills_dir}")
 
     # Create skill manager
-    manager = SkillManager(skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
 
     # Async discover skills (non-blocking)
     print("\n[1] Discovering skills asynchronously...")

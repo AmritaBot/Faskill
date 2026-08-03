@@ -4,7 +4,6 @@ This script demonstrates how supporting files can be used within a skill.
 """
 
 import sys
-from pathlib import Path
 
 
 def process_data(input_file: str, output_file: str) -> None:
@@ -19,7 +18,7 @@ def process_data(input_file: str, output_file: str) -> None:
 
     # Read input file
     try:
-        with open(input_file, 'r') as f:
+        with open(input_file) as f:
             data = f.read()
         print(f"Read {len(data)} bytes from input file")
     except FileNotFoundError:
@@ -30,7 +29,7 @@ def process_data(input_file: str, output_file: str) -> None:
     processed_data = data.upper()
 
     # Write output file
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
         f.write(processed_data)
     print(f"Wrote {len(processed_data)} bytes to output file")
 

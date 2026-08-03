@@ -27,7 +27,7 @@ file-reference-skill/
 
 ```python
 from pathlib import Path
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.path_resolver import FilePathResolver
 
 # Base directory is provided in the skill context
 base_dir = Path("/path/to/skills/file-reference-skill")
@@ -91,6 +91,7 @@ FilePathResolver.resolve_path(base_dir, "malicious_link")
 ## Example Workflow
 
 1. **Skill Invocation**
+
    ```python
    manager = SkillManager()
    manager.discover()

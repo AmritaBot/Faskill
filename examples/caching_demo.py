@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Caching efficiency demonstration for skillkit v0.4+.
+"""Caching efficiency demonstration for faskill v0.4+.
 
 This script demonstrates the performance improvements from Level 2 content caching:
 - LRU cache with mtime-based invalidation
@@ -13,7 +13,7 @@ import logging
 import time
 from pathlib import Path
 
-from skillkit import SkillManager
+from faskill import SkillContext
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
@@ -38,7 +38,7 @@ async def measure_time_ms_async(func, *args, **kwargs):
 def sync_caching_demo() -> None:
     """Demonstrate sync caching performance improvements."""
     print("=" * 70)
-    print("skillkit v0.4: Caching Performance Demo (Sync)")
+    print("faskill v0.4: Caching Performance Demo (Sync)")
     print("=" * 70)
 
     # Use example skills
@@ -46,7 +46,7 @@ def sync_caching_demo() -> None:
     print(f"\nUsing skills directory: {skills_dir}")
 
     # Create manager with default cache (100 entries)
-    manager = SkillManager(project_skill_dir=skills_dir, max_cache_size=100)
+    manager = SkillContext(skill_dirs=[skills_dir], max_cache_size=100)
     manager.discover()
 
     print("\n[1] First Invocation - Cache Miss")
@@ -84,7 +84,7 @@ def sync_caching_demo() -> None:
     print(f"  Execution time: {time3:.2f}ms")
     print(f"  Cache stats: {stats3.hits} hits, {stats3.misses} misses")
     print(f"  Hit rate: {stats3.hit_rate:.1%}")
-    print(f"  Note: Whitespace normalized, same cache entry used!")
+    print("  Note: Whitespace normalized, same cache entry used!")
 
     print("\n[4] Fourth Invocation - Cache Miss (Different Arguments)")
     print("-" * 70)
@@ -95,7 +95,7 @@ def sync_caching_demo() -> None:
     print(f"  Execution time: {time4:.2f}ms")
     print(f"  Cache stats: {stats4.hits} hits, {stats4.misses} misses")
     print(f"  Hit rate: {stats4.hit_rate:.1%}")
-    print(f"  Note: Different arguments → new cache entry created")
+    print("  Note: Different arguments → new cache entry created")
 
     print("\n[5] Cache Statistics Summary")
     print("-" * 70)
@@ -127,13 +127,13 @@ def sync_caching_demo() -> None:
 async def async_caching_demo() -> None:
     """Demonstrate async caching performance with concurrent invocations."""
     print("\n\n" + "=" * 70)
-    print("skillkit v0.4: Caching Performance Demo (Async)")
+    print("faskill v0.4: Caching Performance Demo (Async)")
     print("=" * 70)
 
     skills_dir = Path(__file__).parent / "skills"
     print(f"\nUsing skills directory: {skills_dir}")
 
-    manager = SkillManager(project_skill_dir=skills_dir, max_cache_size=100)
+    manager = SkillContext(skill_dirs=[skills_dir], max_cache_size=100)
     await manager.adiscover()
 
     print("\n[1] Sequential Invocations - Building Cache")
@@ -157,7 +157,7 @@ async def async_caching_demo() -> None:
     print("-" * 70)
     # These will execute in parallel (per-skill locking)
     start_concurrent = time.perf_counter()
-    results = await asyncio.gather(
+    _ = await asyncio.gather(
         manager.ainvoke_skill(skill_name, "Generate commit for feature A"),
         manager.ainvoke_skill(skill_name, "Generate commit for bug fix B"),
         manager.ainvoke_skill(skill_name, "Generate commit for refactor C"),
@@ -166,7 +166,7 @@ async def async_caching_demo() -> None:
 
     print(f"  Total time (3 invocations): {concurrent_time:.2f}ms")
     print(f"  Average per invocation: {concurrent_time / 3:.2f}ms")
-    print(f"  Note: Per-skill locking serializes same-skill invocations")
+    print("  Note: Per-skill locking serializes same-skill invocations")
 
     print("\n[3] Concurrent Invocations - Different Skills (Parallel Execution)")
     print("-" * 70)
@@ -183,7 +183,7 @@ async def async_caching_demo() -> None:
         # Filter out exceptions
         successful_results = [r for r in parallel_results if not isinstance(r, Exception)]
         print(f"  Total time ({len(successful_results)} skills): {parallel_time:.2f}ms")
-        print(f"  Note: Different skills execute in parallel without blocking!")
+        print("  Note: Different skills execute in parallel without blocking!")
     except Exception as e:
         print(f"  Note: Some skills may not exist in demo directory: {e}")
 

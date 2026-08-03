@@ -1,13 +1,13 @@
-"""Script Execution Example for skillkit v0.3.0
+"""Script Execution Example for faskill v0.3.0
 
 This example demonstrates:
 1. Basic script execution with arguments
-2. Environment variable injection (SKILL_NAME, SKILL_BASE_DIR, SKILL_VERSION, SKILLKIT_VERSION)
+2. Environment variable injection (SKILL_NAME, SKILL_BASE_DIR, SKILL_VERSION, faskill_VERSION)
 3. Error handling for script failures
 4. Timeout management
 
 Prerequisites:
-    - skillkit v0.3.0+
+    - faskill v0.3.0+
     - Python 3.10+
     - Example skills with scripts in examples/skills/
 
@@ -19,27 +19,24 @@ import asyncio
 import json
 from pathlib import Path
 
-from skillkit import SkillManager
-from skillkit.core.exceptions import (
-    ScriptNotFoundError,
-    InterpreterNotFoundError,
-)
+from faskill import SkillContext
+from faskill.core.exceptions import InterpreterNotFoundError, ScriptNotFoundError
 
 
 async def main():
     """Run script execution examples."""
     print("=" * 80)
-    print("skillkit v0.3.0 - Script Execution Examples")
+    print("faskill v0.3.0 - Script Execution Examples")
     print("=" * 80)
     print()
 
     # Discover skills in examples directory
     examples_dir = Path(__file__).parent / "skills"
 
-    # Initialize SkillManager with script support
-    manager = SkillManager(
+    # Initialize SkillContext with script support
+    manager = SkillContext(
+        skill_dirs=[examples_dir],
         default_script_timeout=30,
-        project_skill_dir=examples_dir
     )
 
     await manager.adiscover()
@@ -58,7 +55,7 @@ async def main():
         # Find demo-skill for demonstration (falls back to any skill with scripts)
         skill_with_scripts = None
         for metadata in skill_metadata_list:
-            if metadata.name == 'demo-skill':
+            if metadata.name == "demo-skill":
                 skill_with_scripts = manager.load_skill(metadata.name)
                 break
 
@@ -84,9 +81,9 @@ async def main():
 
             # Prepare arguments
             arguments = {
-                "message": "Hello from skillkit!",
+                "message": "Hello from faskill!",
                 "count": 3,
-                "items": ["apple", "banana", "cherry"]
+                "items": ["apple", "banana", "cherry"],
             }
 
             print(f"Arguments: {json.dumps(arguments, indent=2)}")
@@ -97,7 +94,7 @@ async def main():
                 skill_name=skill_with_scripts.metadata.name,
                 script_name=script.name,
                 arguments=arguments,
-                timeout=10
+                timeout=10,
             )
 
             # Display results
@@ -126,7 +123,9 @@ async def main():
             # Check for signals
             if result.signaled:
                 print()
-                print(f"⚠️  Script was terminated by signal: {result.signal} ({result.signal_number})")
+                print(
+                    f"⚠️  Script was terminated by signal: {result.signal} ({result.signal_number})"
+                )
 
             print()
         else:
@@ -154,7 +153,7 @@ async def main():
     print("  - SKILL_NAME: Name of the skill")
     print("  - SKILL_BASE_DIR: Absolute path to skill directory")
     print("  - SKILL_VERSION: Version from skill metadata")
-    print("  - SKILLKIT_VERSION: Current skillkit version")
+    print("  - faskill_VERSION: Current faskill version")
     print()
 
     print("Scripts can access these variables to:")
@@ -176,12 +175,12 @@ args = json.load(sys.stdin)
 skill_name = os.environ['SKILL_NAME']
 skill_base = os.environ['SKILL_BASE_DIR']
 skill_version = os.environ.get('SKILL_VERSION', '0.0.0')
-skillkit_version = os.environ['SKILLKIT_VERSION']
+faskill_version = os.environ['faskill_VERSION']
 
 # Use environment context
 print(f"Running in skill: {skill_name} v{skill_version}")
 print(f"Skill directory: {skill_base}")
-print(f"Powered by skillkit v{skillkit_version}")
+print(f"Powered by faskill v{faskill_version}")
 print(f"Arguments: {args}")
 """)
     print("-" * 40)
@@ -196,13 +195,15 @@ print(f"Arguments: {args}")
     try:
         if skill_with_scripts:
             # Try to execute a non-existent script
-            print(f"Attempting to execute script named 'nonexistent_script' in skill: {skill_with_scripts.metadata.name}..")
+            print(
+                f"Attempting to execute script named 'nonexistent_script' in skill: {skill_with_scripts.metadata.name}.."
+            )
             print()
             result = manager.execute_skill_script(
                 skill_name=skill_with_scripts.metadata.name,
                 script_name="nonexistent_script",
                 arguments={},
-                timeout=10
+                timeout=10,
             )
     except ScriptNotFoundError as e:
         print(f"✓ Caught expected error: {e}")

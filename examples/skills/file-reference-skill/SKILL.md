@@ -15,15 +15,18 @@ This skill uses helper scripts and templates for data processing. All supporting
 ## Available Supporting Files
 
 ### Scripts
+
 - `scripts/data_processor.py` - Main data processing script
 - `scripts/validator.py` - Input validation utilities
 - `scripts/helper.sh` - Shell helper script
 
 ### Templates
+
 - `templates/config.yaml` - Configuration template
 - `templates/report.md` - Report generation template
 
 ### Documentation
+
 - `docs/usage.md` - Detailed usage instructions
 - `docs/examples.md` - Example use cases
 
@@ -33,7 +36,7 @@ When this skill is invoked with arguments, it can access supporting files using 
 
 ```python
 from pathlib import Path
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.path_resolver import FilePathResolver
 
 # Get the skill's base directory (injected by BaseDirectoryProcessor)
 base_dir = Path("<base_directory_from_context>")
@@ -55,6 +58,7 @@ The skill expects data file paths as arguments:
 **Example invocation**: `file-reference-skill data/input.csv data/output.csv`
 
 Processing steps:
+
 1. Validate input using `scripts/validator.py`
 2. Process data using `scripts/data_processor.py`
 3. Generate report using `templates/report.md`

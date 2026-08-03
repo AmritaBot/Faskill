@@ -8,11 +8,12 @@ Environment Variables:
 - SKILL_NAME: Name of the parent skill
 - SKILL_BASE_DIR: Base directory of the skill
 - SKILL_VERSION: Version of the skill
-- SKILLKIT_VERSION: Version of skillkit
+- faskill_VERSION: Version of faskill
 """
-import sys
+
 import json
 import os
+import sys
 
 
 def extract_pdf(file_path: str, pages: str | list):
@@ -33,17 +34,17 @@ def extract_pdf(file_path: str, pages: str | list):
         "text": f"Extracted text from {file_path}",
         "metadata": {
             "title": "Sample Document",
-            "author": "skillkit",
+            "author": "faskill",
             "pages": 10,
             "file_path": file_path,
-            "requested_pages": pages
+            "requested_pages": pages,
         },
         "environment": {
             "skill_name": os.getenv("SKILL_NAME"),
             "skill_base_dir": os.getenv("SKILL_BASE_DIR"),
             "skill_version": os.getenv("SKILL_VERSION"),
-            "skillkit_version": os.getenv("SKILLKIT_VERSION")
-        }
+            "faskill_version": os.getenv("FASKILL_VERSION"),
+        },
     }
 
 
@@ -69,26 +70,17 @@ def main():
         sys.exit(0)
 
     except json.JSONDecodeError as e:
-        error = {
-            "error": "Invalid JSON input",
-            "details": str(e)
-        }
+        error = {"error": "Invalid JSON input", "details": str(e)}
         print(json.dumps(error), file=sys.stderr)
         sys.exit(1)
 
     except ValueError as e:
-        error = {
-            "error": "Invalid arguments",
-            "details": str(e)
-        }
+        error = {"error": "Invalid arguments", "details": str(e)}
         print(json.dumps(error), file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
-        error = {
-            "error": "Unexpected error",
-            "details": str(e)
-        }
+        error = {"error": "Unexpected error", "details": str(e)}
         print(json.dumps(error), file=sys.stderr)
         sys.exit(1)
 

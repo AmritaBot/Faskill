@@ -8,14 +8,15 @@ This module tests:
 - Edge cases and error conditions
 """
 
+import contextlib
 import logging
 import os
 from pathlib import Path
 
 import pytest
 
-from skillkit.core.exceptions import PathSecurityError
-from skillkit.core.path_resolver import FilePathResolver
+from faskill.core.exceptions import PathSecurityError
+from faskill.core.path_resolver import FilePathResolver
 
 
 class TestFilePathResolver:
@@ -127,27 +128,33 @@ class TestFilePathResolver:
         with pytest.raises(PathSecurityError, match="Path traversal attempt detected"):
             FilePathResolver.resolve_path(base_dir, "/etc/passwd")
 
-    @pytest.mark.skipif(os.name != "nt", reason="Windows-specific test")
     def test_block_absolute_path_windows(self, tmp_path: Path):
-        """Test blocking absolute Windows path."""
-        # Setup
+        """Test blocking absolute Windows path on Windows; safe on Unix."""
         base_dir = tmp_path / "skill"
         base_dir.mkdir()
 
-        # Test & Verify
-        with pytest.raises(PathSecurityError, match="Path traversal attempt detected"):
-            FilePathResolver.resolve_path(base_dir, "C:\\Windows\\System32")
+        # C:\ paths are absolute on Windows, valid relative on Unix
+        if os.name == "nt":
+            with pytest.raises(PathSecurityError, match="Path traversal attempt detected"):
+                FilePathResolver.resolve_path(base_dir, "C:\\Windows\\System32")
+        else:
+            # On Linux/macOS this is a safe relative path (colons are valid filename chars)
+            resolved = FilePathResolver.resolve_path(base_dir, "C:\\Windows\\System32")
+            assert resolved.is_relative_to(base_dir.resolve())
 
-    @pytest.mark.skipif(os.name != "nt", reason="Windows-specific test")
     def test_block_unc_path(self, tmp_path: Path):
-        """Test blocking UNC path (Windows network path)."""
-        # Setup
+        """Test blocking UNC network path on Windows; safe on Unix."""
         base_dir = tmp_path / "skill"
         base_dir.mkdir()
 
-        # Test & Verify - UNC paths should be blocked on Windows
-        with pytest.raises(PathSecurityError):
-            FilePathResolver.resolve_path(base_dir, "\\\\server\\share\\file")
+        # UNC paths are absolute on Windows, valid relative on Unix
+        if os.name == "nt":
+            with pytest.raises(PathSecurityError):
+                FilePathResolver.resolve_path(base_dir, "\\\\server\\share\\file")
+        else:
+            # On Linux/macOS, backslashes are valid filename chars — safe relative path
+            resolved = FilePathResolver.resolve_path(base_dir, "\\\\server\\share\\file")
+            assert resolved.is_relative_to(base_dir.resolve())
 
     def test_symlink_within_base(self, tmp_path: Path):
         """Test resolving symlink that points within base directory."""
@@ -259,9 +266,8 @@ class TestFilePathResolver:
         base_dir.mkdir()
 
         # Test
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(PathSecurityError):
-                FilePathResolver.resolve_path(base_dir, "../../../etc/passwd")
+        with caplog.at_level(logging.ERROR), pytest.raises(PathSecurityError):
+            FilePathResolver.resolve_path(base_dir, "../../../etc/passwd")
 
         # Verify logging
         assert len(caplog.records) > 0
@@ -277,9 +283,8 @@ class TestFilePathResolver:
         base_dir.mkdir()
 
         # Test
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(PathSecurityError):
-                FilePathResolver.resolve_path(base_dir, "../secret.txt")
+        with caplog.at_level(logging.ERROR), pytest.raises(PathSecurityError):
+            FilePathResolver.resolve_path(base_dir, "../secret.txt")
 
         # Verify logging context
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
@@ -374,11 +379,8 @@ class TestFilePathResolver:
 
             # Test - try to resolve path in restricted directory
             # This may or may not raise an error depending on the system
-            try:
+            with contextlib.suppress(PathSecurityError, PermissionError):
                 FilePathResolver.resolve_path(base_dir, "restricted/file.txt")
-            except (PathSecurityError, PermissionError):
-                # Either error is acceptable
-                pass
         finally:
             # Restore permissions for cleanup
             os.chmod(restricted_dir, 0o755)
@@ -425,10 +427,7 @@ class TestFilePathResolverEdgeCases:
         special_file.write_text("content")
 
         # Test
-        resolved = FilePathResolver.resolve_path(
-            base_dir,
-            "special!@#$%^&()_+-={}[]/file~`';,.txt"
-        )
+        resolved = FilePathResolver.resolve_path(base_dir, "special!@#$%^&()_+-={}[]/file~`';,.txt")
 
         # Verify
         assert resolved == special_file

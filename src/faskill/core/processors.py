@@ -13,7 +13,7 @@ from pathlib import Path
 from string import Template
 from typing import Any, Dict, List
 
-from skillkit.core.exceptions import (
+from faskill.core.exceptions import (
     ArgumentProcessingError,
     SizeLimitExceededError,
 )

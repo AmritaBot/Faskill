@@ -1,6 +1,6 @@
 # Core Features
 
-This document provides detailed information about skillkit's core features and advanced usage patterns.
+This document provides detailed information about faskill's core features and advanced usage patterns.
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ Skills can include executable scripts for deterministic operations, combining AI
 ### Basic Script Execution
 
 ```python
-from skillkit import SkillManager
+from faskill import SkillManager
 
 manager = SkillManager()
 manager.discover()
@@ -91,7 +91,7 @@ result = {"extracted_text": "..."}
 print(json.dumps(result))
 ```
 
-**Example**: If an LLM generates `{'File_Path': 'doc.pdf', 'Page_Range': '1-5'}`, skillkit automatically converts it to `{'file_path': 'doc.pdf', 'page_range': '1-5'}` before passing to your script. This normalization happens in the core manager, benefiting all framework integrations.
+**Example**: If an LLM generates `{'File_Path': 'doc.pdf', 'Page_Range': '1-5'}`, faskill automatically converts it to `{'file_path': 'doc.pdf', 'page_range': '1-5'}` before passing to your script. This normalization happens in the core manager, benefiting all framework integrations.
 
 ### Environment Variables
 
@@ -100,7 +100,7 @@ Scripts automatically receive these environment variables:
 - `SKILL_NAME` - Name of the parent skill
 - `SKILL_BASE_DIR` - Absolute path to skill directory
 - `SKILL_VERSION` - Skill version from metadata
-- `SKILLKIT_VERSION` - Current skillkit version
+- `faskill_VERSION` - Current faskill version
 
 ```python
 import os
@@ -112,7 +112,7 @@ skill_dir = os.environ['SKILL_BASE_DIR']
 ### Error Handling
 
 ```python
-from skillkit.core.exceptions import (
+from faskill.core.exceptions import (
     ScriptNotFoundError,
     InterpreterNotFoundError,
     PathSecurityError,
@@ -167,6 +167,7 @@ Complete working examples available in `examples/`:
 ### Performance Note ⚡
 
 With v0.4's advanced caching, repeated skill invocations are **up to 25x faster**:
+
 - **First invocation**: ~10-25ms (loads from disk)
 - **Cached invocations**: <1ms (memory lookup)
 - **Automatic**: No code changes needed, cache works transparently
@@ -174,7 +175,7 @@ With v0.4's advanced caching, repeated skill invocations are **up to 25x faster*
 ### Cache Performance Monitoring
 
 ```python
-from skillkit import SkillManager
+from faskill import SkillManager
 
 # Create manager with custom cache size
 manager = SkillManager(max_cache_size=200)  # Default: 100
@@ -204,7 +205,7 @@ manager.clear_cache()  # Clear all cache entries
 ### Multi-Source Discovery with Priority Resolution
 
 ```python
-from skillkit import SkillManager
+from faskill import SkillManager
 
 # Configure multiple skill sources
 manager = SkillManager(
@@ -241,7 +242,7 @@ manager = SkillManager(project_skill_dir=Path("/custom/skills"))
 ### Error handling
 
 ```python
-from skillkit import SkillNotFoundError, ContentLoadError
+from faskill import SkillNotFoundError, ContentLoadError
 
 try:
     result = manager.invoke_skill("my-skill", args)
@@ -269,6 +270,7 @@ result = manager.invoke_skill("code-reviewer", "Review file.py for security issu
 ### No placeholder behavior
 
 If SKILL.md has no `$ARGUMENTS` placeholder:
+
 - With arguments: appended to end of content
 - Without arguments: content returned unchanged
 
@@ -286,27 +288,31 @@ logging.basicConfig(level=logging.DEBUG)
 ### Module-specific logging
 
 ```python
-logging.getLogger('skillkit.core.discovery').setLevel(logging.DEBUG)
+logging.getLogger('faskill.core.discovery').setLevel(logging.DEBUG)
 ```
 
 ### Common issues
 
 **Skill not found after discovery:**
+
 - Check skill directory path
 - Verify SKILL.md file exists (case-insensitive)
 - Check logs for parsing errors
 
 **YAML parsing errors:**
+
 - Validate YAML syntax (use yamllint)
 - Check for proper `---` delimiters
 - Ensure required fields present
 
 **Arguments not substituted:**
+
 - Check for `$ARGUMENTS` placeholder (case-sensitive)
 - Check for typos: `$arguments`, `$ARGUMENT`, `$ ARGUMENTS`
 - See logs for typo detection warnings
 
 **Memory usage concerns:**
+
 - Content is loaded lazily (only when `.content` accessed or `invoke()` called)
 - Python 3.10+ recommended for optimal memory efficiency (60% reduction via slots)
 

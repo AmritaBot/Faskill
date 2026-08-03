@@ -10,7 +10,7 @@ allowed-tools:
 
 # Script Skill
 
-This is a test skill used for validating script execution functionality in skillkit.
+This is a test skill used for validating script execution functionality in faskill.
 
 It includes multiple types of scripts:
 - Python scripts

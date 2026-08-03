@@ -9,9 +9,9 @@ Usage:
 
 import logging
 
-from skillkit import Skill, SkillManager
-from skillkit.core.exceptions import PathSecurityError
-from skillkit.core.path_resolver import FilePathResolver
+from faskill import Skill, SkillContext
+from faskill.core.exceptions import PathSecurityError
+from faskill.core.path_resolver import FilePathResolver
 
 # Configure logging to see security events
 logging.basicConfig(
@@ -28,7 +28,7 @@ def demonstrate_basic_resolution():
     print("=" * 80)
 
     # Create skill manager and discover skills
-    manager = SkillManager(project_skill_dir="examples/skills")
+    manager = SkillContext(skill_dirs=["examples/skills"])
     manager.discover()
 
     # Get the file-reference-skill metadata
@@ -72,7 +72,7 @@ def demonstrate_file_reading():
     print("=" * 80)
 
     # Get skill
-    manager = SkillManager(project_skill_dir="examples/skills")
+    manager = SkillContext(skill_dirs=["examples/skills"])
     manager.discover()
     metadata = manager.get_skill("file-reference-skill")
     skill = Skill(metadata=metadata, base_directory=metadata.skill_path.parent)
@@ -112,7 +112,7 @@ def demonstrate_security_validation():
     print("=" * 80)
 
     # Get skill
-    manager = SkillManager(project_skill_dir="examples/skills")
+    manager = SkillContext(skill_dirs=["examples/skills"])
     manager.discover()
     metadata = manager.get_skill("file-reference-skill")
     skill = Skill(metadata=metadata, base_directory=metadata.skill_path.parent)
@@ -147,7 +147,7 @@ def demonstrate_skill_invocation():
     print("=" * 80)
 
     # Create skill manager and discover skills
-    manager = SkillManager(project_skill_dir="examples/skills")
+    manager = SkillContext(skill_dirs=["examples/skills"])
     manager.discover()
 
     # Invoke skill
@@ -170,7 +170,7 @@ def demonstrate_error_handling():
     print("=" * 80)
 
     # Get skill
-    manager = SkillManager(project_skill_dir="examples/skills")
+    manager = SkillContext(skill_dirs=["examples/skills"])
     manager.discover()
     metadata = manager.get_skill("file-reference-skill")
     skill = Skill(metadata=metadata, base_directory=metadata.skill_path.parent)

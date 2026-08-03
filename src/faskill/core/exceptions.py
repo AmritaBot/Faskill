@@ -1,4 +1,4 @@
-"""Exception hierarchy for skillkit library.
+"""Exception hierarchy for faskill library.
 
 This module defines all custom exceptions used throughout the library,
 following a hierarchical structure for granular error handling.
@@ -6,7 +6,7 @@ following a hierarchical structure for granular error handling.
 
 
 class SkillsUseError(Exception):
-    """Base exception for all skillkit errors.
+    """Base exception for all faskill errors.
 
     Usage: Catch this to handle any library error.
     """
@@ -122,7 +122,7 @@ class PathSecurityError(SkillSecurityError):
 
 
 class ConfigurationError(SkillsUseError):
-    """Raised when SkillManager initialization configuration is invalid.
+    """Raised when SkillContext initialization configuration is invalid.
 
     This exception is raised when explicitly provided directory paths
     do not exist or are not valid directories. Note that default
@@ -135,10 +135,10 @@ class ConfigurationError(SkillsUseError):
 
     Example:
         # This raises ConfigurationError (explicit path doesn't exist)
-        manager = SkillManager(project_skill_dir="/bad/path")
+        manager = SkillContext(skill_dirs=["/bad/path"])
 
         # This does NOT raise error (default path missing is OK)
-        manager = SkillManager()  # No error even if ./skills/ missing
+        manager = SkillContext()  # No error even if ./skills/ missing
     """
 
     def __init__(
@@ -158,12 +158,18 @@ class ConfigurationError(SkillsUseError):
         self.parameter_name = parameter_name
         self.invalid_path = invalid_path
 
+    def __str__(self) -> str:
+        base = super().__str__()
+        if self.parameter_name:
+            base = f"[{self.parameter_name}] {base}"
+        return base
+
 
 class AsyncStateError(SkillsUseError):
     """Raised when async/sync methods are mixed incorrectly.
 
     This exception prevents mixing synchronous and asynchronous
-    initialization/invocation methods on the same SkillManager instance.
+    initialization/invocation methods on the same SkillContext instance.
 
     Example:
         manager.discover()  # Sync init

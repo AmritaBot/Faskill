@@ -1,6 +1,6 @@
 # Reference
 
-This document provides reference information for skillkit including SKILL.md format specification, system requirements, and development guidelines.
+This document provides reference information for faskill including SKILL.md format specification, system requirements, and development guidelines.
 
 ## Table of Contents
 
@@ -29,7 +29,6 @@ name: git-helper
 description: Generate git commit messages and workflow guidance
 allowed-tools: Bash, Read
 ---
-
 # Git Helper Skill
 
 Content with $ARGUMENTS placeholder...
@@ -62,16 +61,16 @@ Content with $ARGUMENTS placeholder...
 
 ```bash
 # Core library (includes async support)
-pip install skillkit
+pip install faskill
 
 # With LangChain integration
-pip install skillkit[langchain]
+pip install faskill[langchain]
 
 # All extras (LangChain + dev tools)
-pip install skillkit[all]
+pip install faskill[all]
 
 # Development dependencies
-pip install skillkit[dev]
+pip install faskill[dev]
 ```
 
 ---
@@ -81,8 +80,8 @@ pip install skillkit[dev]
 ### Setup
 
 ```bash
-git clone https://github.com/maxvaega/skillkit.git
-cd skillkit
+git clone https://github.com/maxvaega/faskill.git
+cd faskill
 python3.10 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -118,13 +117,13 @@ pytest -v
 
 ```bash
 # Lint code
-ruff check src/skillkit
+ruff check src/faskill
 
 # Format code
-ruff format src/skillkit
+ruff format src/faskill
 
 # Type check
-mypy src/skillkit --strict
+mypy src/faskill --strict
 ```
 
 ### Running Examples
@@ -158,6 +157,7 @@ python examples/caching_demo.py
 Main orchestration class for skill discovery and invocation.
 
 **Key Methods**:
+
 - `discover()` - Synchronous skill discovery
 - `adiscover()` - Async skill discovery
 - `invoke_skill(name, args)` - Invoke a skill
@@ -173,6 +173,7 @@ Main orchestration class for skill discovery and invocation.
 Dataclass containing skill metadata (Level 1 of progressive disclosure).
 
 **Key Fields**:
+
 - `name: str` - Skill identifier
 - `description: str` - Human-readable description
 - `skill_path: Path` - Path to skill directory
@@ -185,6 +186,7 @@ Dataclass containing skill metadata (Level 1 of progressive disclosure).
 Dataclass containing full skill content (Level 2 of progressive disclosure).
 
 **Key Fields**:
+
 - `metadata: SkillMetadata` - Skill metadata
 - `content: str` - Full SKILL.md content
 - `scripts: List[ScriptMetadata]` - Available scripts
@@ -192,7 +194,7 @@ Dataclass containing full skill content (Level 2 of progressive disclosure).
 ### Exception Hierarchy
 
 ```python
-SkillKitError                    # Base exception
+faskillError                    # Base exception
 ├── DiscoveryError               # Skill discovery failures
 ├── ParsingError                 # YAML parsing failures
 ├── SkillNotFoundError           # Skill not found

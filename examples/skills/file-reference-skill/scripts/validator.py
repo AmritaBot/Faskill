@@ -23,7 +23,7 @@ def validate_file_path(file_path: str) -> bool:
         return False
 
     try:
-        with open(path, 'r') as f:
+        with open(path) as f:
             f.read(1)
         return True
     except PermissionError:
@@ -47,13 +47,13 @@ def validate_csv_format(file_path: str) -> bool:
         return False
 
     # Check file extension
-    if not file_path.endswith('.csv'):
+    if not file_path.endswith(".csv"):
         print(f"Warning: File does not have .csv extension: {file_path}")
 
     # Check for CSV content (basic validation)
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         first_line = f.readline()
-        if ',' not in first_line:
+        if "," not in first_line:
             print(f"Warning: File may not be valid CSV (no commas found): {file_path}")
             return False
 

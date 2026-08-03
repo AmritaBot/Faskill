@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from skillkit import Skill, SkillManager
-from skillkit.core.exceptions import PathSecurityError
-from skillkit.core.path_resolver import FilePathResolver
+from faskill import Skill, SkillContext
+from faskill.core.exceptions import PathSecurityError
+from faskill.core.path_resolver import FilePathResolver
 
 
 class TestFileReferencesIntegration:
@@ -39,7 +39,7 @@ class TestFileReferencesIntegration:
     def test_discover_file_reference_skill(self, example_skills_dir: Path):
         """Test that file-reference-skill is discovered successfully."""
         # Setup
-        manager = SkillManager(project_skill_dir=str(example_skills_dir))
+        manager = SkillContext(skill_dirs=[str(example_skills_dir)])
 
         # Test
         manager.discover()
@@ -52,7 +52,7 @@ class TestFileReferencesIntegration:
     def test_file_reference_skill_metadata(self, example_skills_dir: Path):
         """Test that file-reference-skill metadata is parsed correctly."""
         # Setup
-        manager = SkillManager(project_skill_dir=str(example_skills_dir))
+        manager = SkillContext(skill_dirs=[str(example_skills_dir)])
         manager.discover()
 
         # Test
@@ -113,7 +113,7 @@ class TestFileReferencesIntegration:
     def test_skill_invocation_includes_base_directory(self, example_skills_dir: Path):
         """Test that skill invocation includes base directory in processed content."""
         # Setup
-        manager = SkillManager(project_skill_dir=str(example_skills_dir))
+        manager = SkillContext(skill_dirs=[str(example_skills_dir)])
         manager.discover()
 
         # Test
@@ -125,12 +125,10 @@ class TestFileReferencesIntegration:
         assert "FilePathResolver.resolve_path" in result
         assert "securely access files" in result
 
-    def test_skill_invocation_includes_file_resolution_helper(
-        self, example_skills_dir: Path
-    ):
+    def test_skill_invocation_includes_file_resolution_helper(self, example_skills_dir: Path):
         """Test that skill invocation includes file path resolution helper."""
         # Setup
-        manager = SkillManager(project_skill_dir=str(example_skills_dir))
+        manager = SkillContext(skill_dirs=[str(example_skills_dir)])
         manager.discover()
 
         # Test
@@ -142,9 +140,7 @@ class TestFileReferencesIntegration:
         assert "base_dir" in result
         assert "relative_path" in result
 
-    def test_security_prevents_traversal_in_real_skill(
-        self, file_reference_skill_dir: Path
-    ):
+    def test_security_prevents_traversal_in_real_skill(self, file_reference_skill_dir: Path):
         """Test that path traversal is prevented in real skill directory."""
         # Setup
         base_dir = file_reference_skill_dir
@@ -183,7 +179,7 @@ class TestFileReferencesIntegration:
     def test_skill_base_directory_property(self, example_skills_dir: Path):
         """Test that Skill object has base_directory property."""
         # Setup
-        manager = SkillManager(project_skill_dir=str(example_skills_dir))
+        manager = SkillContext(skill_dirs=[str(example_skills_dir)])
         manager.discover()
         metadata = manager.get_skill("file-reference-skill")
 
@@ -198,7 +194,7 @@ class TestFileReferencesIntegration:
     def test_multiple_skills_with_file_references(self, example_skills_dir: Path):
         """Test that multiple skills can have their own supporting files."""
         # Setup
-        manager = SkillManager(project_skill_dir=str(example_skills_dir))
+        manager = SkillContext(skill_dirs=[str(example_skills_dir)])
         manager.discover()
 
         # Get file-reference-skill
@@ -270,9 +266,7 @@ class TestFileReferencesSecurityIntegration:
 
         return skill_dir
 
-    def test_symlink_escape_blocked_in_real_scenario(
-        self, temp_skill_with_symlinks: Path
-    ):
+    def test_symlink_escape_blocked_in_real_scenario(self, temp_skill_with_symlinks: Path):
         """Test that symlink escapes are blocked in real skill usage."""
         # Setup
         base_dir = temp_skill_with_symlinks
@@ -354,4 +348,6 @@ class TestFileReferencesPerformance:
 
         # Verify - should be < 1ms per resolution
         per_call = elapsed / iterations
-        assert per_call < 0.001, f"Resolution took {per_call*1000:.2f}ms per call (expected < 1ms)"
+        assert per_call < 0.001, (
+            f"Resolution took {per_call * 1000:.2f}ms per call (expected < 1ms)"
+        )

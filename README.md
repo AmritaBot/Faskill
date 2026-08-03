@@ -1,27 +1,27 @@
 <div align="center">
-<h1 align="center" style="font-size:4em">skillkit</h1>
+<h1 align="center" style="font-size:4em">FASKILL</h1>
 </div>
 <p align="center" style="max-width:80%; margin-bottom:40px">Enables Anthropic's Agent Skills functionality to any python agent, unleashing LLM-powered agents to <b>autonomously discover and utilize packaged expertise</b> in a token-efficient way.
-skillkit is compatible with existings skills (SKILL.md), so you can browse and use any skill available on the web</p>
+faskill is compatible with existings skills (SKILL.md), so you can browse and use any skill available on the web</p>
 
 <p align="center">
 <a href="https://www.python.org/downloads/">
     <img src="https://img.shields.io/badge/python-3.10%2B-blue" /></a>
 <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
-<a href="https://pypi.org/project/skillkit/">
-    <img src="https://img.shields.io/pypi/v/skillkit" /></a>
-<a href="ttps://github.com/maxvaega/skillkit/releases">
-    <img src="https://img.shields.io/github/v/release/maxvaega/skillkit" /></a>
-<a href="https://github.com/maxvaega/skillkit/stargazers">
-    <img src="https://img.shields.io/github/stars/maxvaega/skillkit" /></a>
+<a href="https://pypi.org/project/faskill/">
+    <img src="https://img.shields.io/pypi/v/faskill" /></a>
+<a href="ttps://github.com/maxvaega/faskill/releases">
+    <img src="https://img.shields.io/github/v/release/maxvaega/faskill" /></a>
+<a href="https://github.com/maxvaega/faskill/stargazers">
+    <img src="https://img.shields.io/github/stars/maxvaega/faskill" /></a>
 </p>
 
-<div align="center">
-<img src="https://i.imgflip.com/addac0.jpg" title="skillkit for developers" width=370px height=250px/>
-</div>
+<H2>
 
----
+Fast Async Skills
+
+</H2>
 
 ## Features
 
@@ -67,25 +67,25 @@ The web is full of great skills! here are some repositories you can check out:
 ### Core library (includes async support)
 
 ```bash
-pip install skillkit
+pip install faskill
 ```
 
 ### With LangChain integration
 
 ```bash
-pip install skillkit[langchain]
+pip install faskill[langchain]
 ```
 
 ### All extras (LangChain + dev tools)
 
 ```bash
-pip install skillkit[all]
+pip install faskill[all]
 ```
 
 ### Development dependencies
 
 ```bash
-pip install skillkit[dev]
+pip install faskill[dev]
 ```
 
 ## Quick Start
@@ -122,7 +122,7 @@ You are a code reviewer. Analyze the provided code for:
 ### 2. Use standalone (without frameworks)
 
 ```python
-from skillkit import SkillManager
+from faskill import SkillManager
 
 # Create manager (defaults to ./.claude/skills/)
 manager = SkillManager()
@@ -144,8 +144,8 @@ print(result)
 ### 3. Use with LangChain
 
 ```python
-from skillkit import SkillManager
-from skillkit.integrations.langchain import create_langchain_tools
+from faskill import SkillManager
+from faskill.integrations.langchain import create_langchain_tools
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from langchain.messages import HumanMessage
@@ -204,7 +204,7 @@ Skills can include executable scripts (Python, Shell, JavaScript, Ruby, Perl) fo
 ### Basic Example
 
 ```python
-from skillkit import SkillManager
+from faskill import SkillManager
 
 manager = SkillManager()
 manager.discover()
@@ -261,66 +261,12 @@ See `examples/` directory:
 - `skills/` - Example skills and plugins
 - `caching_demo.py` - Cache performance demonstration
 
-## Roadmap
-
-### v0.1 (Released)
-- ✅ Core skill discovery and metadata management
-- ✅ YAML frontmatter parsing with validation
-- ✅ Progressive disclosure pattern (lazy loading)
-- ✅ Skill invocation with argument substitution
-- ✅ LangChain integration (sync only)
-- ✅ 70% test coverage
-
-### v0.2 (Released)
-- ✅ Async support (`adiscover()`, `ainvoke_skill()`)
-- ✅ Multi-source discovery (project, Anthropic config, plugins, custom paths)
-- ✅ Plugin integration with MCPB manifest support
-- ✅ Nested directory structures (up to 5 levels deep)
-- ✅ Fully qualified skill names for conflict resolution
-- ✅ Secure file path resolution with traversal prevention
-- ✅ LangChain async integration (`ainvoke`)
-- ✅ Backward compatible with v0.1
-
-### v0.3 (Released)
-- ✅ Script Execution Support (Python, Shell, JavaScript, Ruby, Perl)
-- ✅ Automatic script detection (recursive, up to 5 levels)
-- ✅ Security controls (path validation, permission checks, timeout enforcement)
-- ✅ Environment variable injection (SKILL_NAME, SKILL_BASE_DIR, SKILL_VERSION, SKILLKIT_VERSION)
-- ✅ LangChain script tool integration (each script exposed as separate StructuredTool)
-- ✅ Parameters normalization to lower-case
-- ✅ Comprehensive error handling and audit logging
-- ✅ Cross-platform support (Linux, macOS, Windows)
-- ✅ Backward compatible with v0.1/v0.2 (except ToolRestrictionError removed)
-
-### v0.4 (Released) ⚡
-- ✅ Advanced Progressive Disclosure with LRU content caching
-- ✅ Mtime-based automatic cache invalidation
-- ✅ Argument normalization for maximum cache efficiency
-- ✅ Thread-safe concurrent invocations with per-skill asyncio locks
-- ✅ Cache management API (get_cache_stats(), clear_cache())
-- ✅ Performance: <1ms cache hits vs 10-25ms first invocation
-- ✅ Memory efficient: ~2.1KB per cached entry
-- ✅ 80%+ cache hit rate achievable
-- ✅ Created `docs/` folder with basic documentation
-
-### v0.5 (Planned)
-- Additional framework integrations (LlamaIndex, CrewAI, Haystack)
 
 ### v0.6 (Planned)
 - Scripts permissions enforcement
 - Enhanced error handling and recovery
 - Performance optimizations
 - Skill name enforcement and controls
-
-### v0.7 (Planned)
-- Advanced file system support
-- bedrock code interpreter support
-
-### v1.0 (Planned)
-- Comprehensive documentation
-- 90% test coverage
-- Production-ready stability
-- Full plugin ecosystem support
 
 ## License
 
@@ -351,10 +297,14 @@ Please see **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed information.
 
 ## Support
 
-- **Issues**: https://github.com/maxvaega/skillkit/issues
-- **Documentation**: https://github.com/maxvaega/skillkit#readme
+- **Issues**: https://github.com/maxvaega/faskill/issues
+- **Documentation**: https://github.com/maxvaega/faskill#readme
 
 ## Acknowledgments
 
 - Inspired by Anthropic's Agent Skills functionality
 - Built with Python and Claude itself!
+
+## Fork
+
+Fork of [skillkit](https://github.com/maxvaega/skillkit/) with refactors by [AmritaConstant](https://github.com/AmritaBot)

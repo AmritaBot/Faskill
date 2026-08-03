@@ -25,13 +25,17 @@ $ARGUMENTS
 Provide your review in the following structure:
 
 ### Summary
+
 Brief overview of the code quality
 
 ### Issues Found
+
 List specific issues with severity (Critical/High/Medium/Low) and location
 
 ### Recommendations
+
 Actionable suggestions for improvement
 
 ### Positive Aspects
+
 Highlight what was done well

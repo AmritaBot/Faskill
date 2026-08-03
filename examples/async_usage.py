@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Async usage example for skillkit library.
+"""Async usage example for faskill library.
 
 This script demonstrates async usage patterns including:
 - FastAPI integration
@@ -11,7 +11,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from skillkit import SkillManager
+from faskill import SkillContext
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(mes
 async def fastapi_example():
     """Demonstrate FastAPI-style async pattern."""
     print("=" * 60)
-    print("skillkit: FastAPI Integration Pattern")
+    print("faskill: FastAPI Integration Pattern")
     print("=" * 60)
 
     skills_dir = Path(__file__).parent / "skills"
@@ -28,7 +28,7 @@ async def fastapi_example():
 
     # Initialize manager (typically done at app startup)
     print("\n[Startup] Initializing skill manager...")
-    manager = SkillManager(skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     await manager.adiscover()
     print(f"  Discovered {len(manager.list_skills())} skills")
 
@@ -49,14 +49,14 @@ async def fastapi_example():
 async def concurrent_invocations_example():
     """Demonstrate concurrent skill invocations."""
     print("\n\n" + "=" * 60)
-    print("skillkit: Concurrent Invocations Example")
+    print("faskill: Concurrent Invocations Example")
     print("=" * 60)
 
     skills_dir = Path(__file__).parent / "skills"
     print(f"\nUsing skills directory: {skills_dir}")
 
     # Initialize manager
-    manager = SkillManager(skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     await manager.adiscover()
 
     # Process multiple requests concurrently (non-blocking)
@@ -91,17 +91,19 @@ async def concurrent_invocations_example():
 async def multi_source_async_example():
     """Demonstrate async discovery with multiple sources."""
     print("\n\n" + "=" * 60)
-    print("skillkit: Multi-Source Async Discovery")
+    print("faskill: Multi-Source Async Discovery")
     print("=" * 60)
 
     skills_dir = Path(__file__).parent / "skills"
     print(f"\nUsing skills directory: {skills_dir}")
 
     # Create manager with multiple sources
-    manager = SkillManager(
-        project_skill_dir=skills_dir,
-        anthropic_config_dir=skills_dir / ".claude" / "skills",  # May not exist
-        plugin_dirs=[skills_dir / "example-plugin"],  # May not exist
+    manager = SkillContext(
+        skill_dirs=[
+            skills_dir,
+            skills_dir / ".claude" / "skills",  # May not exist
+            skills_dir / "example-plugin",  # May not exist
+        ]
     )
 
     # Async discovery (scans all sources concurrently)
@@ -128,7 +130,7 @@ async def multi_source_async_example():
 async def performance_comparison():
     """Compare sync vs async performance."""
     print("\n\n" + "=" * 60)
-    print("skillkit: Performance Comparison (Sync vs Async)")
+    print("faskill: Performance Comparison (Sync vs Async)")
     print("=" * 60)
 
     skills_dir = Path(__file__).parent / "skills"
@@ -137,7 +139,7 @@ async def performance_comparison():
     print("\n[Sync] Running sync discovery and invocations...")
     import time
 
-    manager_sync = SkillManager(skills_dir)
+    manager_sync = SkillContext(skill_dirs=[skills_dir])
 
     start_time = time.time()
     manager_sync.discover()
@@ -153,7 +155,7 @@ async def performance_comparison():
 
     # Async version
     print("\n[Async] Running async discovery and invocations...")
-    manager_async = SkillManager(skills_dir)
+    manager_async = SkillContext(skill_dirs=[skills_dir])
 
     start_time = time.time()
     await manager_async.adiscover()

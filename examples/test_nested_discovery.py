@@ -8,7 +8,7 @@ discover skills in nested directory structures.
 import asyncio
 from pathlib import Path
 
-from skillkit import SkillManager
+from faskill import SkillContext
 
 
 def test_sync_nested_discovery():
@@ -25,7 +25,7 @@ def test_sync_nested_discovery():
         return False
 
     # Create manager with nested skills
-    manager = SkillManager(project_skill_dir=nested_skills_dir)
+    manager = SkillContext(skill_dirs=[nested_skills_dir])
 
     # Discover skills synchronously
     print(f"\nScanning: {nested_skills_dir}")
@@ -78,7 +78,7 @@ async def test_async_nested_discovery():
         return False
 
     # Create manager with nested skills
-    manager = SkillManager(project_skill_dir=nested_skills_dir)
+    manager = SkillContext(skill_dirs=[nested_skills_dir])
 
     # Discover skills asynchronously
     print(f"\nScanning (async): {nested_skills_dir}")
@@ -126,12 +126,12 @@ async def test_sync_async_consistency():
     nested_skills_dir = Path(__file__).parent / "skills" / "nested-example"
 
     # Sync discovery
-    manager_sync = SkillManager(project_skill_dir=nested_skills_dir)
+    manager_sync = SkillContext(skill_dirs=[nested_skills_dir])
     manager_sync.discover()
     sync_skills = {m.name for m in manager_sync.list_skills()}
 
     # Async discovery
-    manager_async = SkillManager(project_skill_dir=nested_skills_dir)
+    manager_async = SkillContext(skill_dirs=[nested_skills_dir])
     await manager_async.adiscover()
     async_skills = {m.name for m in manager_async.list_skills()}
 

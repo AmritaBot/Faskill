@@ -26,6 +26,7 @@ Arguments: $ARGUMENTS
 ## Output Format
 
 The analysis will include:
+
 - Row count and column count
 - Column names and inferred data types
 - Missing value report

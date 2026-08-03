@@ -8,12 +8,13 @@ Tests automatic script detection with:
 - Graceful error handling
 """
 
+import contextlib
 import time
 from pathlib import Path
 
 import pytest
 
-from skillkit.core.scripts import ScriptDetector, ScriptMetadata
+from faskill.core.scripts import ScriptDetector, ScriptMetadata
 
 
 @pytest.fixture
@@ -86,11 +87,8 @@ def temp_skill_dir(tmp_path):
     symlink_target = scripts_dir / "target.py"
     symlink_target.write_text('"""Target"""\nprint("target")')
     symlink = scripts_dir / "symlink.py"
-    try:
+    with contextlib.suppress(OSError, NotImplementedError):
         symlink.symlink_to(symlink_target)
-    except (OSError, NotImplementedError):
-        # Symlinks may not be supported on Windows
-        pass
 
     # Create non-script files (should be skipped)
     (scripts_dir / "README.md").write_text("# Readme")
@@ -304,8 +302,10 @@ class TestScriptDetectorPhase8:
         scripts_by_name = {s.name: s for s in scripts}
 
         # Verify descriptions extracted
-        assert "PDF text" in scripts_by_name["python_doc"].description or \
-               "Extract" in scripts_by_name["python_doc"].description
+        assert (
+            "PDF text" in scripts_by_name["python_doc"].description
+            or "Extract" in scripts_by_name["python_doc"].description
+        )
 
         # Script with no description should have empty string
         assert scripts_by_name["no_desc"].description == ""

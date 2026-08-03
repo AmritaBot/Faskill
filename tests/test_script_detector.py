@@ -1,7 +1,8 @@
 """Tests for script detection functionality."""
+
 import pytest
-from pathlib import Path
-from skillkit.core.scripts import ScriptDetector, ScriptMetadata
+
+from faskill.core.scripts import ScriptDetector
 
 
 class TestScriptDetector:
@@ -97,9 +98,9 @@ class TestScriptDetector:
         scripts_dir.mkdir(parents=True)
 
         # Create non-script files
-        (scripts_dir / "data.json").write_text('{}')
-        (scripts_dir / "README.md").write_text('# Readme')
-        (scripts_dir / "config.txt").write_text('config')
+        (scripts_dir / "data.json").write_text("{}")
+        (scripts_dir / "README.md").write_text("# Readme")
+        (scripts_dir / "config.txt").write_text("config")
 
         detector = ScriptDetector()
         scripts = detector.detect_scripts(skill_dir)
@@ -197,11 +198,11 @@ print("Hello")
         scripts_dir.mkdir(parents=True)
 
         script_file = scripts_dir / "test.sh"
-        script_file.write_text('''#!/bin/bash
+        script_file.write_text("""#!/bin/bash
 # This is a shell script
 # that does something useful
 echo "Hello"
-''')
+""")
 
         detector = ScriptDetector()
         scripts = detector.detect_scripts(skill_dir)
@@ -216,12 +217,12 @@ echo "Hello"
         scripts_dir.mkdir(parents=True)
 
         script_file = scripts_dir / "test.js"
-        script_file.write_text('''/**
+        script_file.write_text("""/**
  * This is a JSDoc comment
  * for a JavaScript file
  */
 console.log("Hello");
-''')
+""")
 
         detector = ScriptDetector()
         scripts = detector.detect_scripts(skill_dir)
@@ -272,7 +273,8 @@ console.log("Hello");
 
         # Create a script file and make it unreadable (Unix-only)
         import sys
-        if sys.platform != 'win32':
+
+        if sys.platform != "win32":
             invalid_file = scripts_dir / "invalid.py"
             invalid_file.write_text('print("test")')
             invalid_file.chmod(0o000)  # Remove all permissions
@@ -287,7 +289,6 @@ console.log("Hello");
             # Cleanup
             invalid_file.chmod(0o644)
 
-    @pytest.mark.skip(reason="pytest-benchmark not installed")
     def test_detection_performance_benchmark(self, tmp_path, benchmark):
         """Benchmark script detection performance."""
         skill_dir = tmp_path / "test-skill"

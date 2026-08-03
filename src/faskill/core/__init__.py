@@ -1,11 +1,11 @@
-"""Core module for skillkit library.
+"""Core module for faskill library.
 
 This module contains the framework-agnostic core functionality with zero
 framework dependencies (stdlib + PyYAML only).
 """
 
-from skillkit.core.discovery import SkillDiscovery
-from skillkit.core.exceptions import (
+from faskill.core.discovery import SkillDiscovery
+from faskill.core.exceptions import (
     ArgumentProcessingError,
     ContentLoadError,
     InvalidFrontmatterError,
@@ -19,10 +19,10 @@ from skillkit.core.exceptions import (
     SkillsUseError,
     SuspiciousInputError,
 )
-from skillkit.core.manager import SkillManager
-from skillkit.core.models import CacheStats, ContentCache, Skill, SkillMetadata
-from skillkit.core.parser import SkillParser
-from skillkit.core.processors import (
+from faskill.core.manager import SkillContext
+from faskill.core.models import CacheStats, ContentCache, Skill, SkillMetadata
+from faskill.core.parser import SkillParser
+from faskill.core.processors import (
     ArgumentSubstitutionProcessor,
     BaseDirectoryProcessor,
     CompositeProcessor,
@@ -33,7 +33,7 @@ from skillkit.core.processors import (
 
 __all__ = [
     # Core classes
-    "SkillManager",
+    "SkillContext",
     "SkillMetadata",
     "Skill",
     "SkillDiscovery",

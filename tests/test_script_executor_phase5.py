@@ -6,7 +6,7 @@ Test Coverage:
     - T041: WARNING level log entry when timeout occurs
     - T042: Execution time measurement using time.perf_counter()
     - T043: Timeout property on ScriptExecutionResult
-    - T044: Custom timeout support in SkillManager.execute_skill_script()
+    - T044: Custom timeout support in SkillContext.execute_skill_script()
 
 Test Scenarios:
     1. Script completes within timeout (no timeout)
@@ -14,22 +14,16 @@ Test Scenarios:
     3. Timeout log entry verification
     4. Execution time measurement accuracy
     5. ScriptExecutionResult.timeout property
-    6. Custom timeout override in SkillManager
+    6. Custom timeout override in SkillContext
     7. Edge cases (0 second script, very short timeout)
 """
 
-import json
 import logging
 import time
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
-import pytest
-
-from skillkit.core.exceptions import SkillNotFoundError
-from skillkit.core.manager import SkillManager
-from skillkit.core.models import SkillMetadata
-from skillkit.core.scripts import ScriptExecutionResult, ScriptExecutor
+from faskill.core.manager import SkillContext
+from faskill.core.scripts import ScriptExecutionResult, ScriptExecutor
 
 
 class TestTimeoutHandling:
@@ -85,10 +79,7 @@ while True:
 
         start_time = time.perf_counter()
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
         elapsed = time.perf_counter() - start_time
 
@@ -124,10 +115,7 @@ print("This should not appear")
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # Verify timeout occurred
@@ -157,10 +145,7 @@ print("Done")
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # Should timeout (script needs 500ms, timeout is 100ms)
@@ -190,19 +175,14 @@ while True:
 
         with caplog.at_level(logging.WARNING):
             result = executor.execute(
-                script_path=script,
-                arguments={},
-                skill_base_dir=tmp_path,
-                skill_metadata=metadata,
+                script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
             )
 
         # Verify timeout occurred
         assert result.timeout is True
 
         # T041: Verify WARNING log entry with timeout details
-        warning_logs = [
-            record for record in caplog.records if record.levelname == "WARNING"
-        ]
+        warning_logs = [record for record in caplog.records if record.levelname == "WARNING"]
 
         # Find the timeout warning (may have other warnings like truncation)
         timeout_warnings = [
@@ -230,10 +210,7 @@ while True:
 
         with caplog.at_level(logging.WARNING):
             result = executor.execute(
-                script_path=script,
-                arguments={},
-                skill_base_dir=tmp_path,
-                skill_metadata=metadata,
+                script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
             )
 
         # Verify no timeout
@@ -269,10 +246,7 @@ print("Done")
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # Verify execution time is approximately 200ms (±100ms tolerance)
@@ -293,10 +267,7 @@ print("Done")
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # Very fast scripts should still have measurable time (>0ms, <100ms)
@@ -321,10 +292,7 @@ while True:
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # Verify timeout occurred
@@ -349,10 +317,7 @@ class TestTimeoutProperty:
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # T043: Verify timeout property checks exit_code==124 and "Timeout" in stderr
@@ -372,10 +337,7 @@ class TestTimeoutProperty:
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # Verify timeout property is False
@@ -394,10 +356,7 @@ class TestTimeoutProperty:
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # Verify timeout property is False for non-timeout errors
@@ -405,8 +364,8 @@ class TestTimeoutProperty:
         assert result.timeout is False
 
 
-class TestCustomTimeoutInSkillManager:
-    """Test custom timeout support in SkillManager.execute_skill_script() (T044)."""
+class TestCustomTimeoutInSkillContext:
+    """Test custom timeout support in SkillContext.execute_skill_script() (T044)."""
 
     def test_custom_timeout_overrides_default(self, tmp_path):
         """Test that custom timeout parameter overrides default_script_timeout."""
@@ -437,17 +396,12 @@ print("Done")
         )
 
         # Create manager with default timeout of 5 seconds
-        manager = SkillManager(
-            project_skill_dir=tmp_path,
-            default_script_timeout=5,
-        )
+        manager = SkillContext(skill_dirs=[tmp_path], default_script_timeout=5)
         manager.discover()
 
         # Test 1: Use default timeout (5s) - should succeed
         result1 = manager.execute_skill_script(
-            skill_name="test-skill",
-            script_name="timeout_test",
-            arguments={},
+            skill_name="test-skill", script_name="timeout_test", arguments={}
         )
         assert result1.exit_code == 0
         assert not result1.timeout
@@ -486,17 +440,12 @@ Content
         script.write_text("import time; time.sleep(3)")
 
         # Create manager with very short default timeout (1 second)
-        manager = SkillManager(
-            project_skill_dir=tmp_path,
-            default_script_timeout=1,
-        )
+        manager = SkillContext(skill_dirs=[tmp_path], default_script_timeout=1)
         manager.discover()
 
         # Execute without specifying timeout (should use default 1s)
         result = manager.execute_skill_script(
-            skill_name="test-skill",
-            script_name="slow",
-            arguments={},
+            skill_name="test-skill", script_name="slow", arguments={}
         )
 
         # Should timeout using default 1 second timeout
@@ -526,7 +475,7 @@ Content
         script = scripts_dir / "instant.py"
         script.write_text('print("x")')
 
-        manager = SkillManager(project_skill_dir=tmp_path, default_script_timeout=30)
+        manager = SkillContext(skill_dirs=[tmp_path], default_script_timeout=30)
         manager.discover()
 
         # Execute with timeout=0 (immediate timeout, probably)
@@ -565,10 +514,7 @@ print("Completed")
         metadata.version = "1.0.0"
 
         result = executor.execute(
-            script_path=script,
-            arguments={},
-            skill_base_dir=tmp_path,
-            skill_metadata=metadata,
+            script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
         # Should complete successfully (just under timeout)

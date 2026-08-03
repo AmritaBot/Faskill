@@ -5,20 +5,16 @@ injection, $ARGUMENTS substitution, escaping, size limits, and composition.
 """
 
 import pytest
-from pathlib import Path
 
-from skillkit.core.processors import (
-    ContentProcessor,
-    BaseDirectoryProcessor,
+from faskill.core.exceptions import (
+    SizeLimitExceededError,
+)
+from faskill.core.processors import (
     ArgumentSubstitutionProcessor,
+    BaseDirectoryProcessor,
     CompositeProcessor,
     normalize_arguments,
 )
-from skillkit.core.exceptions import (
-    SizeLimitExceededError,
-    ArgumentProcessingError,
-)
-
 
 # T041: Create test_processors.py with imports and file header ✓
 
@@ -56,12 +52,15 @@ def test_substitute_arguments_basic():
 
 
 # T044: test_substitute_arguments_various_positions - Parametrized
-@pytest.mark.parametrize("content,arguments,expected", [
-    ("$ARGUMENTS is at the start", "This", "This is at the start"),
-    ("In the $ARGUMENTS of text", "middle", "In the middle of text"),
-    ("At the end: $ARGUMENTS", "HERE", "At the end: HERE"),
-    ("Multiple $ARGUMENTS and $ARGUMENTS", "TEST", "Multiple TEST and TEST"),
-])
+@pytest.mark.parametrize(
+    "content,arguments,expected",
+    [
+        ("$ARGUMENTS is at the start", "This", "This is at the start"),
+        ("In the $ARGUMENTS of text", "middle", "In the middle of text"),
+        ("At the end: $ARGUMENTS", "HERE", "At the end: HERE"),
+        ("Multiple $ARGUMENTS and $ARGUMENTS", "TEST", "Multiple TEST and TEST"),
+    ],
+)
 def test_substitute_arguments_various_positions(content, arguments, expected):
     """Parametrized test validating $ARGUMENTS substitution at different positions.
 
@@ -371,18 +370,21 @@ def test_normalize_arguments_case_preserved():
     assert result != "file.pdf"
 
 
-@pytest.mark.parametrize("input_args,expected", [
-    ("file.pdf", "file.pdf"),
-    (" file.pdf", "file.pdf"),
-    ("file.pdf ", "file.pdf"),
-    (" file.pdf ", "file.pdf"),
-    ("  file.pdf  ", "file.pdf"),
-    ("a  b", "a b"),
-    ("a   b   c", "a b c"),
-    ("   ", ""),
-    ("", ""),
-    (None, ""),
-])
+@pytest.mark.parametrize(
+    "input_args,expected",
+    [
+        ("file.pdf", "file.pdf"),
+        (" file.pdf", "file.pdf"),
+        ("file.pdf ", "file.pdf"),
+        (" file.pdf ", "file.pdf"),
+        ("  file.pdf  ", "file.pdf"),
+        ("a  b", "a b"),
+        ("a   b   c", "a b c"),
+        ("   ", ""),
+        ("", ""),
+        (None, ""),
+    ],
+)
 def test_normalize_arguments_parametrized(input_args, expected):
     """Parametrized test for normalize_arguments with various inputs.
 

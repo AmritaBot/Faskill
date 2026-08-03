@@ -4,8 +4,9 @@
 This script reads JSON from stdin, extracts specified fields,
 and outputs the results.
 """
-import sys
+
 import json
+import sys
 
 
 def main():
@@ -18,7 +19,7 @@ def main():
         result = {
             "status": "success",
             "extracted": input_data.get("field", "default"),
-            "count": len(str(input_data))
+            "count": len(str(input_data)),
         }
 
         # Output JSON result

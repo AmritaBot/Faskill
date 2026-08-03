@@ -26,6 +26,7 @@ Arguments: $ARGUMENTS
 ## Output Format
 
 The parser will provide:
+
 - Validation status (valid/invalid)
 - Structure overview (depth, object count)
 - Schema compliance report (if schema provided)

@@ -1,16 +1,17 @@
 """Tests for script execution functionality."""
-import pytest
+
 import os
 import stat
-import json
-from pathlib import Path
-from skillkit.core.scripts import ScriptExecutor, ScriptMetadata
-from skillkit.core.exceptions import (
+
+import pytest
+
+from faskill.core.exceptions import (
+    ArgumentSizeError,
+    InterpreterNotFoundError,
     PathSecurityError,
     ScriptPermissionError,
-    InterpreterNotFoundError,
-    ArgumentSizeError
 )
+from faskill.core.scripts import ScriptExecutor
 
 
 class TestScriptExecutor:
@@ -22,16 +23,14 @@ class TestScriptExecutor:
         script_file = tmp_path / "success.py"
         script_file.write_text('import sys; print("Success"); sys.exit(0)')
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -39,7 +38,7 @@ class TestScriptExecutor:
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 0
@@ -53,16 +52,14 @@ class TestScriptExecutor:
         script_file = tmp_path / "failure.py"
         script_file.write_text('import sys; sys.stderr.write("Error occurred"); sys.exit(1)')
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -70,7 +67,7 @@ class TestScriptExecutor:
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 1
@@ -81,22 +78,20 @@ class TestScriptExecutor:
         """Test timeout handling with exit code 124."""
         # Create an infinite loop script
         script_file = tmp_path / "timeout.py"
-        script_file.write_text('''
+        script_file.write_text("""
 import time
 while True:
     time.sleep(0.1)
-''')
-
+""")
 
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=1)  # 1 second timeout
@@ -104,7 +99,7 @@ while True:
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 124
@@ -114,23 +109,21 @@ while True:
     def test_json_arguments_via_stdin(self, tmp_path):
         """Test that arguments are passed as JSON via stdin."""
         script_file = tmp_path / "stdin_test.py"
-        script_file.write_text('''
+        script_file.write_text("""
 import sys
 import json
 data = json.load(sys.stdin)
 print(f"Received: {data['message']}")
-''')
-
+""")
 
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -138,7 +131,7 @@ print(f"Received: {data['message']}")
             script_path=script_file,
             arguments={"message": "Hello World"},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 0
@@ -161,16 +154,14 @@ print(f"Received: {data['message']}")
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -180,13 +171,14 @@ print(f"Received: {data['message']}")
                 script_path=malicious_path,
                 arguments={},
                 skill_base_dir=skill_dir,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
 
     def test_symlink_validation(self, tmp_path):
         """Test that symlinks pointing outside skill directory are rejected."""
         import sys
-        if sys.platform == 'win32':
+
+        if sys.platform == "win32":
             pytest.skip("Symlink test not applicable on Windows")
 
         skill_dir = tmp_path / "skill"
@@ -204,16 +196,14 @@ print(f"Received: {data['message']}")
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -223,13 +213,14 @@ print(f"Received: {data['message']}")
                 script_path=symlink_path,
                 arguments={},
                 skill_base_dir=skill_dir,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
 
     def test_setuid_permission_check(self, tmp_path):
         """Test that scripts with setuid bit are rejected."""
         import sys
-        if sys.platform == 'win32':
+
+        if sys.platform == "win32":
             pytest.skip("setuid test not applicable on Windows")
 
         script_file = tmp_path / "setuid.py"
@@ -238,16 +229,14 @@ print(f"Received: {data['message']}")
         # Set setuid bit
         os.chmod(script_file, stat.S_ISUID | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -257,13 +246,14 @@ print(f"Received: {data['message']}")
                 script_path=script_file,
                 arguments={},
                 skill_base_dir=tmp_path,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
 
     def test_setgid_permission_check(self, tmp_path):
         """Test that scripts with setgid bit are rejected."""
         import sys
-        if sys.platform == 'win32':
+
+        if sys.platform == "win32":
             pytest.skip("setgid test not applicable on Windows")
 
         script_file = tmp_path / "setgid.py"
@@ -272,16 +262,14 @@ print(f"Received: {data['message']}")
         # Set setgid bit
         os.chmod(script_file, stat.S_ISGID | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -291,30 +279,28 @@ print(f"Received: {data['message']}")
                 script_path=script_file,
                 arguments={},
                 skill_base_dir=tmp_path,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
 
     def test_output_truncation_at_10mb(self, tmp_path):
         """Test that output is truncated at 10MB limit."""
         script_file = tmp_path / "large_output.py"
         # Generate 15MB of output (exceeds 10MB limit)
-        script_file.write_text('''
+        script_file.write_text("""
 import sys
 # Write 15MB to stdout
 for i in range(15 * 1024):  # 15 * 1024 KB = 15 MB
     sys.stdout.write("x" * 1024)  # 1KB per iteration
-''')
-
+""")
 
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=10, max_output_size=10 * 1024 * 1024)  # 10MB limit
@@ -322,7 +308,7 @@ for i in range(15 * 1024):  # 15 * 1024 KB = 15 MB
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         # Output should be truncated
@@ -333,24 +319,22 @@ for i in range(15 * 1024):  # 15 * 1024 KB = 15 MB
     def test_environment_variable_injection(self, tmp_path):
         """Test that environment variables are injected correctly."""
         script_file = tmp_path / "env_test.py"
-        script_file.write_text('''
+        script_file.write_text("""
 import os
 print(f"SKILL_NAME={os.environ.get('SKILL_NAME', 'MISSING')}")
 print(f"SKILL_BASE_DIR={os.environ.get('SKILL_BASE_DIR', 'MISSING')}")
 print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
-print(f"SKILLKIT_VERSION={os.environ.get('SKILLKIT_VERSION', 'MISSING')}")
-''')
-
+print(f"faskill_VERSION={os.environ.get('faskill_VERSION', 'MISSING')}")
+""")
 
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -358,34 +342,35 @@ print(f"SKILLKIT_VERSION={os.environ.get('SKILLKIT_VERSION', 'MISSING')}")
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 0
         assert "SKILL_NAME=test-skill" in result.stdout
         assert "SKILL_BASE_DIR=" in result.stdout
         assert "SKILL_VERSION=" in result.stdout
-        assert "SKILLKIT_VERSION=" in result.stdout
+        assert "faskill_VERSION=" in result.stdout
 
     def test_skill_version_from_metadata(self, tmp_path):
         """Test that SKILL_VERSION is correctly set from metadata.version."""
         script_file = tmp_path / "version_test.py"
-        script_file.write_text('''
+        script_file.write_text("""
 import os
 print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
-''')
+""")
 
         # Create SKILL.md file
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\nversion: 1.2.3\n---\n")
 
         # Create skill metadata with version
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
             name="test-skill",
             description="Test skill",
             skill_path=tmp_path / "SKILL.md",
-            version="1.2.3"
+            version="1.2.3",
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -393,7 +378,7 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 0
@@ -402,21 +387,20 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
     def test_skill_version_defaults_to_zero(self, tmp_path):
         """Test that SKILL_VERSION defaults to 0.0.0 when metadata.version is None."""
         script_file = tmp_path / "version_default_test.py"
-        script_file.write_text('''
+        script_file.write_text("""
 import os
 print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
-''')
+""")
 
         # Create SKILL.md file without version
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
 
         # Create skill metadata without version (defaults to None)
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -424,7 +408,7 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 0
@@ -440,12 +424,13 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
 
         # Simulate skill metadata with Bash in allowed-tools
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
             name="test-skill",
             description="Test skill",
             skill_path=tmp_path / "SKILL.md",
-            allowed_tools=["Bash", "Read"]
+            allowed_tools=["Bash", "Read"],
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -453,7 +438,7 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 0
@@ -469,12 +454,13 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
 
         # Simulate skill metadata with no tool restrictions
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata_none = SkillMetadata(
             name="test-skill",
             description="Test skill",
             skill_path=tmp_path / "SKILL.md",
-            allowed_tools=None
+            allowed_tools=None,
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -482,7 +468,7 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata_none
+            skill_metadata=skill_metadata_none,
         )
 
         assert result.exit_code == 0
@@ -490,22 +476,20 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
     def test_execution_time_measurement(self, tmp_path):
         """Test that execution time is measured accurately."""
         script_file = tmp_path / "timed.py"
-        script_file.write_text('''
+        script_file.write_text("""
 import time
 time.sleep(0.1)  # Sleep for 100ms
 print("Done")
-''')
-
+""")
 
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -513,7 +497,7 @@ print("Done")
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.exit_code == 0
@@ -525,16 +509,14 @@ print("Done")
         script_file = tmp_path / "args.py"
         script_file.write_text('print("test")')
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         # Create arguments larger than 10MB
@@ -547,35 +529,34 @@ print("Done")
                 script_path=script_file,
                 arguments=large_args,
                 skill_base_dir=tmp_path,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
 
     def test_signal_detection_sigsegv(self, tmp_path):
         """Test detection of SIGSEGV signal (Unix only)."""
         import sys
-        if sys.platform == 'win32':
+
+        if sys.platform == "win32":
             pytest.skip("Signal test not applicable on Windows")
-        if sys.platform == 'darwin':
+        if sys.platform == "darwin":
             pytest.skip("Signal test triggers macOS crash reporter - skipping to avoid disruption")
 
         # Create a script that causes segmentation fault
         script_file = tmp_path / "segfault.py"
-        script_file.write_text('''
+        script_file.write_text("""
 import ctypes
 # Cause segfault by accessing invalid memory
 ctypes.string_at(0)
-''')
-
+""")
 
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -583,7 +564,7 @@ ctypes.string_at(0)
             script_path=script_file,
             arguments={},
             skill_base_dir=tmp_path,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         # Should detect signal (SIGSEGV = -11)
@@ -596,16 +577,14 @@ ctypes.string_at(0)
         script_file = tmp_path / "test.xyz"  # Unknown extension
         script_file.write_text('print("test")')
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -615,25 +594,22 @@ ctypes.string_at(0)
                 script_path=script_file,
                 arguments={},
                 skill_base_dir=tmp_path,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
 
-    @pytest.mark.skip(reason="pytest-benchmark not installed")
     def test_execution_overhead_performance(self, tmp_path, benchmark):
         """Benchmark script execution overhead."""
         script_file = tmp_path / "fast.py"
         script_file.write_text('print("Hello")')
 
-
         # Create SKILL.md file (required by SkillMetadata)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("---\nname: test-skill\ndescription: Test skill\n---\n")
         # Create minimal skill metadata
-        from skillkit.core.models import SkillMetadata
+        from faskill.core.models import SkillMetadata
+
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=tmp_path / "SKILL.md"
+            name="test-skill", description="Test skill", skill_path=tmp_path / "SKILL.md"
         )
 
         executor = ScriptExecutor(timeout=5)
@@ -643,7 +619,7 @@ ctypes.string_at(0)
                 script_path=script_file,
                 arguments={},
                 skill_base_dir=tmp_path,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
 
         # Benchmark execution overhead

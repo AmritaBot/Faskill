@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from skillkit.core.models import PluginManifest, SkillSource
+    from faskill.core.models import PluginManifest, SkillSource
 
 logger = logging.getLogger(__name__)
 
@@ -37,18 +37,18 @@ class SkillDiscovery:
             List of absolute paths to SKILL.md files (empty if none found)
 
         Example:
-            >>> from skillkit.core.models import SkillSource, SourceType
+            >>> from faskill.core.models import SkillSource, SourceType
             >>> discovery = SkillDiscovery()
             >>> source = SkillSource(
-            ...     source_type=SourceType.PROJECT,
+            ...     source_type=SourceType.CUSTOM,
             ...     directory=Path("./skills"),
-            ...     priority=100
+            ...     priority=5
             ... )
             >>> skills = discovery.discover_skills(source)
             >>> print(f"Found {len(skills)} skills from {source.source_type.value}")
-            Found 3 skills from project
+            Found 3 skills from custom
         """
-        from skillkit.core.models import SourceType
+        from faskill.core.models import SourceType
 
         # For plugin sources with manifests, scan all directories listed in manifest.skills
         if source.source_type == SourceType.PLUGIN and source.plugin_manifest:
@@ -257,18 +257,18 @@ class SkillDiscovery:
             List of absolute paths to SKILL.md files (empty if none found)
 
         Example:
-            >>> from skillkit.core.models import SkillSource, SourceType
+            >>> from faskill.core.models import SkillSource, SourceType
             >>> discovery = SkillDiscovery()
             >>> source = SkillSource(
-            ...     source_type=SourceType.PROJECT,
+            ...     source_type=SourceType.CUSTOM,
             ...     directory=Path("./skills"),
-            ...     priority=100
+            ...     priority=5
             ... )
             >>> skills = await discovery.adiscover_skills(source)
             >>> print(f"Found {len(skills)} skills from {source.source_type.value}")
-            Found 3 skills from project
+            Found 3 skills from custom
         """
-        from skillkit.core.models import SourceType
+        from faskill.core.models import SourceType
 
         # For plugin sources with manifests, scan all directories listed in manifest.skills
         if source.source_type == SourceType.PLUGIN and source.plugin_manifest:
@@ -349,21 +349,27 @@ class SkillDiscovery:
         return await asyncio.to_thread(_scan)
 
 
-def discover_plugin_manifest(plugin_dir: Path) -> "PluginManifest | None":
+def discover_plugin_manifest(
+    plugin_dir: Path,
+    manifest_name: str = ".claude-plugin/plugin.json",
+) -> "PluginManifest | None":
     """Discover and parse plugin manifest if present.
 
-    Scans the plugin directory for .claude-plugin/plugin.json manifest file.
-    If found, parses and validates the manifest. If not found or parsing fails,
-    returns None with appropriate logging.
+    Scans the plugin directory for a manifest file (default:
+    ``.claude-plugin/plugin.json``).  If found, parses and validates the
+    manifest.  If not found or parsing fails, returns None with appropriate
+    logging.
 
-    This function implements graceful degradation: malformed manifests are logged
-    as warnings but do not halt discovery of other plugins.
+    This function implements graceful degradation: malformed manifests are
+    logged as warnings but do not halt discovery of other plugins.
 
     Args:
-        plugin_dir: Absolute path to plugin root directory
+        plugin_dir: Absolute path to plugin root directory.
+        manifest_name: Relative path to the manifest file inside plugin_dir
+            (default: ``".claude-plugin/plugin.json"``).
 
     Returns:
-        PluginManifest instance if manifest found and valid, None otherwise
+        PluginManifest instance if manifest found and valid, None otherwise.
 
     Example:
         >>> manifest = discover_plugin_manifest(Path("./plugins/my-plugin"))
@@ -379,15 +385,15 @@ def discover_plugin_manifest(plugin_dir: Path) -> "PluginManifest | None":
         This function uses parse_plugin_manifest() which enforces security
         checks (JSON bomb protection, path traversal prevention).
     """
-    from skillkit.core.exceptions import (
+    from faskill.core.exceptions import (
         ManifestNotFoundError,
         ManifestParseError,
         ManifestValidationError,
     )
-    from skillkit.core.parser import parse_plugin_manifest
+    from faskill.core.parser import parse_plugin_manifest
 
     # Check for manifest at expected location
-    manifest_path = plugin_dir / ".claude-plugin" / "plugin.json"
+    manifest_path = plugin_dir / manifest_name
 
     if not manifest_path.exists():
         logger.debug(f"No plugin manifest found at {manifest_path}")

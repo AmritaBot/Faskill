@@ -1,11 +1,9 @@
-"""Core data models for skillkit library.
+"""Core data models for faskill library.
 
 This module defines the SkillMetadata and Skill dataclasses that implement
 the progressive disclosure pattern for memory-efficient skill management.
 """
 
-import asyncio
-import sys
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -13,14 +11,11 @@ from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from skillkit.core.processors import CompositeProcessor
-    from skillkit.core.scripts import ScriptMetadata
+import aiologic
 
-# Check Python version for slots support on all dataclasses
-# Note: Project requires Python 3.10+ (per pyproject.toml), so slots=True is safe
-# The variable is kept for documentation purposes
-PYTHON_310_PLUS = sys.version_info >= (3, 10)
+if TYPE_CHECKING:
+    from faskill.core.processors import CompositeProcessor
+    from faskill.core.scripts import ScriptMetadata
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,24 +45,28 @@ class CacheStats:
 class ContentCache:
     """LRU cache for processed skill content with mtime-based invalidation.
 
-    Thread-safe for concurrent async access via asyncio.Lock. Implements
+    Thread-safe for mixed sync/async access via aiologic.Lock.  Implements
     Least Recently Used (LRU) eviction policy using OrderedDict.
 
-    Cache Key: (skill_name: str, normalized_arguments: str)
+    Provides both sync (``get_sync`` / ``put_sync`` / ``clear_sync``) and
+    async (``get`` / ``put`` / ``clear``) accessors backed by the same lock,
+    so the cache works correctly regardless of the calling context.
+
+    Cache Key:   (skill_name: str, normalized_arguments: str)
     Cache Value: (processed_content: str, file_mtime: float)
 
     Performance:
-        - get(): O(1) with mtime validation
-        - put(): O(1) with LRU eviction
-        - clear(): O(n) for specific skill, O(1) for all
+        - get / get_sync:  O(1) with mtime validation
+        - put / put_sync:  O(1) with LRU eviction
+        - clear / clear_sync: O(n) for specific skill, O(1) for all
 
-    Memory: ~2.1KB per cached entry (typical), ~5KB cache overhead
+    Memory: ~2.1 KB per cached entry (typical), ~5 KB cache overhead
 
     Example:
         >>> cache = ContentCache(max_size=100)
-        >>> await cache.put("skill-a", "args", "content", 1000.0)
-        >>> content = await cache.get("skill-a", "args", 1000.0)  # Cache hit
-        >>> content = await cache.get("skill-a", "args", 2000.0)  # Cache miss (stale)
+        >>> cache.put_sync("skill-a", "args", "content", 1000.0)
+        >>> cache.get_sync("skill-a", "args", 1000.0)   # Cache hit
+        >>> cache.get_sync("skill-a", "args", 2000.0)   # Cache miss (stale)
     """
 
     def __init__(self, max_size: int = 100) -> None:
@@ -87,7 +86,56 @@ class ContentCache:
         self._max_size: int = max_size
         self._hits: int = 0
         self._misses: int = 0
-        self._lock: asyncio.Lock = asyncio.Lock()
+        self._lock: aiologic.Lock = aiologic.Lock()  # Mixed sync/async safe
+
+    #  Sync API
+
+    def get_sync(
+        self,
+        skill_name: str,
+        arguments: str,
+        file_mtime: float,
+    ) -> str | None:
+        """Get cached content if valid (synchronous).
+
+        Args:
+            skill_name: Skill identifier.
+            arguments: Normalized argument string.
+            file_mtime: Current file modification time.
+
+        Returns:
+            Cached content if valid, ``None`` if miss or stale.
+        """
+        with self._lock:
+            return self._get_locked(skill_name, arguments, file_mtime)
+
+    def put_sync(
+        self,
+        skill_name: str,
+        arguments: str,
+        content: str,
+        file_mtime: float,
+    ) -> None:
+        """Store processed content with mtime (synchronous).
+
+        Implements LRU eviction when cache is full.
+        """
+        with self._lock:
+            self._put_locked(skill_name, arguments, content, file_mtime)
+
+    def clear_sync(self, skill_name: str | None = None) -> int:
+        """Clear cache entries (synchronous).
+
+        Args:
+            skill_name: Clear only this skill (default: clear all).
+
+        Returns:
+            Number of entries cleared.
+        """
+        with self._lock:
+            return self._clear_locked(skill_name)
+
+    #  Async API
 
     async def get(
         self,
@@ -95,35 +143,9 @@ class ContentCache:
         arguments: str,
         file_mtime: float,
     ) -> str | None:
-        """Get cached content if valid (mtime check).
-
-        Args:
-            skill_name: Skill identifier
-            arguments: Normalized argument string
-            file_mtime: Current file modification time
-
-        Returns:
-            Cached content if valid, None if miss or stale
-
-        Performance:
-            - Cache hit (valid mtime): <1ms
-            - Cache miss or stale: <1ms + invalidation overhead
-        """
+        """Get cached content if valid (async)."""
         async with self._lock:
-            key = (skill_name, arguments)
-            if key in self._cache:
-                content, cached_mtime = self._cache[key]
-                if cached_mtime >= file_mtime:
-                    # Valid cache entry - mark as recently used
-                    self._cache.move_to_end(key)
-                    self._hits += 1
-                    return content
-                else:
-                    # Stale entry - invalidate
-                    del self._cache[key]
-
-            self._misses += 1
-            return None
+            return self._get_locked(skill_name, arguments, file_mtime)
 
     async def put(
         self,
@@ -132,68 +154,76 @@ class ContentCache:
         content: str,
         file_mtime: float,
     ) -> None:
-        """Store processed content with mtime.
-
-        Implements LRU eviction when cache is full.
-
-        Args:
-            skill_name: Skill identifier
-            arguments: Normalized argument string
-            content: Processed skill content
-            file_mtime: File modification time at processing
-
-        Performance:
-            - Without eviction: <1ms
-            - With eviction: <1ms (removes oldest entry)
-        """
+        """Store processed content with mtime (async)."""
         async with self._lock:
-            key = (skill_name, arguments)
-
-            # Remove old entry if exists
-            if key in self._cache:
-                del self._cache[key]
-
-            # Evict oldest entry if at capacity
-            elif len(self._cache) >= self._max_size:
-                self._cache.popitem(last=False)
-
-            # Add new entry (most recent)
-            self._cache[key] = (content, file_mtime)
+            self._put_locked(skill_name, arguments, content, file_mtime)
 
     async def clear(self, skill_name: str | None = None) -> int:
-        """Clear cache entries.
-
-        Args:
-            skill_name: Clear only this skill (default: clear all)
-
-        Returns:
-            Number of entries cleared
-
-        Performance:
-            - Clear all: O(1)
-            - Clear specific: O(n) where n = total cache size
-        """
+        """Clear cache entries (async)."""
         async with self._lock:
-            if skill_name is None:
-                # Clear all
-                count = len(self._cache)
-                self._cache.clear()
-                return count
+            return self._clear_locked(skill_name)
+
+    #  Internal helpers (caller must hold self._lock)
+
+    def _get_locked(
+        self,
+        skill_name: str,
+        arguments: str,
+        file_mtime: float,
+    ) -> str | None:
+        key = (skill_name, arguments)
+        if key in self._cache:
+            content, cached_mtime = self._cache[key]
+            if cached_mtime >= file_mtime:
+                # Valid cache entry — mark as recently used
+                self._cache.move_to_end(key)
+                self._hits += 1
+                return content
             else:
-                # Clear specific skill
-                keys_to_remove = [key for key in self._cache if key[0] == skill_name]
-                for key in keys_to_remove:
-                    del self._cache[key]
-                return len(keys_to_remove)
+                # Stale entry — invalidate
+                del self._cache[key]
+
+        self._misses += 1
+        return None
+
+    def _put_locked(
+        self,
+        skill_name: str,
+        arguments: str,
+        content: str,
+        file_mtime: float,
+    ) -> None:
+        key = (skill_name, arguments)
+
+        # Remove old entry if exists
+        if key in self._cache:
+            del self._cache[key]
+
+        # Evict oldest entry if at capacity
+        elif len(self._cache) >= self._max_size:
+            self._cache.popitem(last=False)
+
+        # Add new entry (most recent)
+        self._cache[key] = (content, file_mtime)
+
+    def _clear_locked(self, skill_name: str | None = None) -> int:
+        if skill_name is None:
+            count = len(self._cache)
+            self._cache.clear()
+            return count
+
+        keys_to_remove = [key for key in self._cache if key[0] == skill_name]
+        for key in keys_to_remove:
+            del self._cache[key]
+        return len(keys_to_remove)
+
+    #  Stats
 
     def get_stats(self) -> CacheStats:
         """Get cache statistics snapshot.
 
-        Returns:
-            CacheStats with current metrics
-
         Note:
-            This method is synchronous and does not acquire the lock.
+            This method does **not** acquire the lock.
             Statistics may be approximate during concurrent operations.
         """
         total = self._hits + self._misses
@@ -212,14 +242,10 @@ class SourceType(str, Enum):
     """Skill source type classification.
 
     Values define the priority order for conflict resolution:
-    - PROJECT: Project-specific skills (./skills/) - Priority 100
-    - ANTHROPIC: Anthropic config skills (./.claude/skills/) - Priority 50
-    - PLUGIN: Plugin skills (./plugins/*/skills/) - Priority 10
-    - CUSTOM: Additional user paths - Priority 5
+    - PLUGIN: Plugin skills (manifest-bearing directories) - Priority 10
+    - CUSTOM: All other user-configured directories - Priority 5
     """
 
-    PROJECT = "project"
-    ANTHROPIC = "anthropic"
     PLUGIN = "plugin"
     CUSTOM = "custom"
 
@@ -304,7 +330,7 @@ class Skill:
         Side Effects:
             Creates CompositeProcessor with BaseDirectoryProcessor + ArgumentSubstitutionProcessor
         """
-        from skillkit.core.processors import (
+        from faskill.core.processors import (
             ArgumentSubstitutionProcessor,
             BaseDirectoryProcessor,
             CompositeProcessor,
@@ -336,7 +362,7 @@ class Skill:
             - First access: ~10-20ms (file I/O)
             - Subsequent: <1μs (cached)
         """
-        from skillkit.core.exceptions import ContentLoadError
+        from faskill.core.exceptions import ContentLoadError
 
         try:
             return self.metadata.skill_path.read_text(encoding="utf-8-sig")
@@ -369,7 +395,7 @@ class Skill:
         """
         import asyncio
 
-        from skillkit.core.exceptions import ContentLoadError
+        from faskill.core.exceptions import ContentLoadError
 
         def _sync_read() -> str:
             """Sync implementation for thread execution."""
@@ -489,7 +515,7 @@ class Skill:
             return self._scripts
 
         # Import ScriptDetector only when needed (circular dependency prevention)
-        from skillkit.core.scripts import ScriptDetector
+        from faskill.core.scripts import ScriptDetector
 
         # Detect scripts and cache results
         detector = ScriptDetector()
@@ -538,7 +564,7 @@ class PluginManifest:
         Raises:
             ManifestValidationError: If validation fails
         """
-        from skillkit.core.exceptions import ManifestValidationError
+        from faskill.core.exceptions import ManifestValidationError
 
         # Validate manifest version
         if self.manifest_version not in {"0.1", "0.3"}:

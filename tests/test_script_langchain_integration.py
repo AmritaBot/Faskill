@@ -1,41 +1,44 @@
 """Test LangChain integration for script-based tools (v0.3+)."""
 
-import pytest
+import importlib
+import importlib.util
 from pathlib import Path
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
+
+import pytest
 
 # Import guards for optional dependencies
 try:
-    from langchain_core.tools import StructuredTool
+    importlib.util.find_spec("langchain_core")  # noqa: F401
+
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
 # Skip all tests if langchain not installed
 pytestmark = pytest.mark.skipif(
-    not LANGCHAIN_AVAILABLE,
-    reason="LangChain integration requires: pip install skillkit[langchain]"
+    not LANGCHAIN_AVAILABLE, reason="LangChain integration requires: pip install faskill[langchain]"
 )
 
 
 @pytest.fixture
 def mock_skill_with_scripts():
     """Create a mock Skill object with scripts."""
-    from skillkit.core.scripts import ScriptMetadata
+    from faskill.core.scripts import ScriptMetadata
 
     # Create mock script metadata
     script1 = ScriptMetadata(
         name="extract",
         path=Path("scripts/extract.py"),
         script_type="python",
-        description="Extract text from PDF files"
+        description="Extract text from PDF files",
     )
 
     script2 = ScriptMetadata(
         name="convert",
         path=Path("scripts/convert.sh"),
         script_type="shell",
-        description="Convert PDF to text format"
+        description="Convert PDF to text format",
     )
 
     # Create mock Skill with scripts property
@@ -48,8 +51,8 @@ def mock_skill_with_scripts():
 
 @pytest.fixture
 def mock_manager():
-    """Create a mock SkillManager."""
-    from skillkit.core.scripts import ScriptExecutionResult
+    """Create a mock SkillContext."""
+    from faskill.core.scripts import ScriptExecutionResult
 
     manager = Mock()
 
@@ -63,7 +66,7 @@ def mock_manager():
         signal=None,
         signal_number=None,
         stdout_truncated=False,
-        stderr_truncated=False
+        stderr_truncated=False,
     )
     manager.execute_skill_script.return_value = result
 
@@ -72,7 +75,7 @@ def mock_manager():
 
 def test_create_script_tools_basic(mock_skill_with_scripts, mock_manager):
     """Test create_script_tools creates tools for all scripts."""
-    from skillkit.integrations.langchain import create_script_tools
+    from faskill.integrations.langchain import create_script_tools
 
     tools = create_script_tools(mock_skill_with_scripts, mock_manager)
 
@@ -87,7 +90,7 @@ def test_create_script_tools_basic(mock_skill_with_scripts, mock_manager):
 
 def test_create_script_tools_descriptions(mock_skill_with_scripts, mock_manager):
     """Test script descriptions are used in tool descriptions."""
-    from skillkit.integrations.langchain import create_script_tools
+    from faskill.integrations.langchain import create_script_tools
 
     tools = create_script_tools(mock_skill_with_scripts, mock_manager)
 
@@ -100,7 +103,7 @@ def test_create_script_tools_descriptions(mock_skill_with_scripts, mock_manager)
 
 def test_script_tool_invocation_success(mock_skill_with_scripts, mock_manager):
     """Test script tool invocation returns stdout on success."""
-    from skillkit.integrations.langchain import create_script_tools
+    from faskill.integrations.langchain import create_script_tools
 
     tools = create_script_tools(mock_skill_with_scripts, mock_manager)
     extract_tool = next(t for t in tools if t.name == "pdf-extractor__extract")
@@ -121,9 +124,10 @@ def test_script_tool_invocation_success(mock_skill_with_scripts, mock_manager):
 
 def test_script_tool_invocation_failure(mock_skill_with_scripts, mock_manager):
     """Test script tool raises ToolException on failure."""
-    from skillkit.integrations.langchain import create_script_tools
     from langchain_core.tools import ToolException
-    from skillkit.core.scripts import ScriptExecutionResult
+
+    from faskill.core.scripts import ScriptExecutionResult
+    from faskill.integrations.langchain import create_script_tools
 
     # Mock execute_skill_script to return failure
     result = ScriptExecutionResult(
@@ -135,7 +139,7 @@ def test_script_tool_invocation_failure(mock_skill_with_scripts, mock_manager):
         signal=None,
         signal_number=None,
         stdout_truncated=False,
-        stderr_truncated=False
+        stderr_truncated=False,
     )
     mock_manager.execute_skill_script.return_value = result
 
@@ -152,8 +156,8 @@ def test_script_tool_invocation_failure(mock_skill_with_scripts, mock_manager):
 
 def test_create_langchain_tools_includes_scripts():
     """Test create_langchain_tools includes both prompt and script tools."""
-    from skillkit.integrations.langchain import create_langchain_tools
-    from skillkit.core.scripts import ScriptMetadata
+    from faskill.core.scripts import ScriptMetadata
+    from faskill.integrations.langchain import create_langchain_tools
 
     # Create mock manager with a skill that has scripts
     manager = Mock()
@@ -169,7 +173,7 @@ def test_create_langchain_tools_includes_scripts():
         name="extract",
         path=Path("scripts/extract.py"),
         script_type="python",
-        description="Extract text from PDF"
+        description="Extract text from PDF",
     )
 
     skill = Mock()
@@ -178,7 +182,8 @@ def test_create_langchain_tools_includes_scripts():
     manager.load_skill.return_value = skill
 
     # Mock execute_skill_script
-    from skillkit.core.scripts import ScriptExecutionResult
+    from faskill.core.scripts import ScriptExecutionResult
+
     result = ScriptExecutionResult(
         stdout="Success",
         stderr="",
@@ -188,7 +193,7 @@ def test_create_langchain_tools_includes_scripts():
         signal=None,
         signal_number=None,
         stdout_truncated=False,
-        stderr_truncated=False
+        stderr_truncated=False,
     )
     manager.execute_skill_script.return_value = result
 
@@ -205,15 +210,15 @@ def test_create_langchain_tools_includes_scripts():
 
 def test_script_tool_with_empty_description(mock_manager):
     """Test script tool with no description uses default."""
-    from skillkit.integrations.langchain import create_script_tools
-    from skillkit.core.scripts import ScriptMetadata
+    from faskill.core.scripts import ScriptMetadata
+    from faskill.integrations.langchain import create_script_tools
 
     # Create script with empty description
     script = ScriptMetadata(
         name="process",
         path=Path("scripts/process.py"),
         script_type="python",
-        description=""  # Empty description
+        description="",  # Empty description
     )
 
     skill = Mock()

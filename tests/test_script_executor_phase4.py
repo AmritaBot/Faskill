@@ -8,19 +8,17 @@ Tests focus on:
 - T038: Audit logging in execute()
 """
 
-import json
+import contextlib
 import logging
 import os
 import stat
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
-from skillkit.core.exceptions import PathSecurityError, ScriptPermissionError
-from skillkit.core.models import SkillMetadata
-from skillkit.core.scripts import ScriptExecutor
+from faskill.core.exceptions import PathSecurityError, ScriptPermissionError
+from faskill.core.models import SkillMetadata
+from faskill.core.scripts import ScriptExecutor
 
 
 class TestPathTraversalPrevention:
@@ -38,12 +36,11 @@ class TestPathTraversalPrevention:
 
         executor = ScriptExecutor()
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(PathSecurityError, match="escapes skill directory"):
-                executor._validate_script_path(
-                    Path("../../../../etc/passwd"),
-                    skill_dir
-                )
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(PathSecurityError, match="escapes skill directory"),
+        ):
+            executor._validate_script_path(Path("../../../../etc/passwd"), skill_dir)
 
         # Verify security violation was logged
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
@@ -59,12 +56,8 @@ class TestPathTraversalPrevention:
         executor = ScriptExecutor()
 
         # Try to access /etc/passwd
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(PathSecurityError):
-                executor._validate_script_path(
-                    Path("/etc/passwd"),
-                    skill_dir
-                )
+        with caplog.at_level(logging.ERROR), pytest.raises(PathSecurityError):
+            executor._validate_script_path(Path("/etc/passwd"), skill_dir)
 
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
         assert len(error_logs) > 0
@@ -85,12 +78,8 @@ class TestPathTraversalPrevention:
 
         executor = ScriptExecutor()
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(PathSecurityError):
-                executor._validate_script_path(
-                    symlink.relative_to(skill_dir),
-                    skill_dir
-                )
+        with caplog.at_level(logging.ERROR), pytest.raises(PathSecurityError):
+            executor._validate_script_path(symlink.relative_to(skill_dir), skill_dir)
 
         # Verify security violation was logged
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
@@ -114,10 +103,7 @@ class TestPathTraversalPrevention:
         executor = ScriptExecutor()
 
         # Should not raise
-        result = executor._validate_script_path(
-            symlink.relative_to(skill_dir),
-            skill_dir
-        )
+        result = executor._validate_script_path(symlink.relative_to(skill_dir), skill_dir)
 
         assert result == target.resolve()
 
@@ -140,10 +126,7 @@ class TestPathTraversalPrevention:
         executor = ScriptExecutor()
 
         # Should detect symlink and validate target
-        result = executor._validate_script_path(
-            symlink.relative_to(skill_dir),
-            skill_dir
-        )
+        result = executor._validate_script_path(symlink.relative_to(skill_dir), skill_dir)
 
         assert result.exists()
         assert result.is_file()
@@ -152,7 +135,7 @@ class TestPathTraversalPrevention:
 class TestPermissionValidation:
     """Test permission validation with security logging."""
 
-    @pytest.mark.skipif(os.name == 'nt', reason="Unix-only test")
+    @pytest.mark.skipif(os.name == "nt", reason="Unix-only test")
     def test_rejects_setuid_script(self, tmp_path, caplog):
         """Test that scripts with setuid bit are rejected (T035)."""
         skill_dir = tmp_path / "skill"
@@ -168,16 +151,18 @@ class TestPermissionValidation:
 
         executor = ScriptExecutor()
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(ScriptPermissionError, match="dangerous permissions"):
-                executor._check_permissions(script)
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(ScriptPermissionError, match="dangerous permissions"),
+        ):
+            executor._check_permissions(script)
 
         # Verify security violation was logged
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
         assert any("dangerous permissions" in r.message for r in error_logs)
         assert any("setuid=True" in r.message for r in error_logs)
 
-    @pytest.mark.skipif(os.name == 'nt', reason="Unix-only test")
+    @pytest.mark.skipif(os.name == "nt", reason="Unix-only test")
     def test_rejects_setgid_script(self, tmp_path, caplog):
         """Test that scripts with setgid bit are rejected (T035)."""
         skill_dir = tmp_path / "skill"
@@ -193,9 +178,11 @@ class TestPermissionValidation:
 
         executor = ScriptExecutor()
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(ScriptPermissionError, match="dangerous permissions"):
-                executor._check_permissions(script)
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(ScriptPermissionError, match="dangerous permissions"),
+        ):
+            executor._check_permissions(script)
 
         # Verify security violation was logged
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
@@ -227,12 +214,8 @@ class TestSecurityViolationLogging:
 
         executor = ScriptExecutor()
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(PathSecurityError):
-                executor._validate_script_path(
-                    Path("../../../../etc/passwd"),
-                    skill_dir
-                )
+        with caplog.at_level(logging.ERROR), pytest.raises(PathSecurityError):
+            executor._validate_script_path(Path("../../../../etc/passwd"), skill_dir)
 
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
         assert len(error_logs) > 0
@@ -246,24 +229,16 @@ class TestSecurityViolationLogging:
 
         executor = ScriptExecutor()
 
-        with caplog.at_level(logging.ERROR):
-            try:
-                # Try with nonexistent path
-                executor._validate_script_path(
-                    Path("nonexistent.py"),
-                    skill_dir
-                )
-            except FileNotFoundError:
-                pass
+        with caplog.at_level(logging.ERROR), contextlib.suppress(FileNotFoundError):
+            executor._validate_script_path(Path("nonexistent.py"), skill_dir)
 
         # At least some validation happened
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
-        # This is expected to have no logs if file doesn't exist
-        # (FileNotFoundError is the exception)
+        assert error_logs == []  # No logs expected for nonexistent file
 
     def test_permission_violation_logs_with_details(self, tmp_path, caplog):
         """Test that permission violations log with detailed info (T037)."""
-        if os.name == 'nt':
+        if os.name == "nt":
             pytest.skip("Unix-only test")
 
         skill_dir = tmp_path / "skill"
@@ -275,11 +250,8 @@ class TestSecurityViolationLogging:
 
         executor = ScriptExecutor()
 
-        with caplog.at_level(logging.ERROR):
-            try:
-                executor._check_permissions(script)
-            except ScriptPermissionError:
-                pass
+        with caplog.at_level(logging.ERROR), contextlib.suppress(ScriptPermissionError):
+            executor._check_permissions(script)
 
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
         assert len(error_logs) > 0
@@ -316,10 +288,7 @@ print(json.dumps({"success": True}))
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test skill", skill_path=skill_md, allowed_tools=()
         )
 
         with caplog.at_level(logging.INFO):
@@ -327,8 +296,9 @@ print(json.dumps({"success": True}))
                 script_path=script.relative_to(skill_dir),
                 arguments={"test": "value"},
                 skill_base_dir=skill_dir,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
+        assert result is not None
 
         # Check that audit log was created
         audit_logs = [r for r in caplog.records if "AUDIT:" in r.message]
@@ -355,25 +325,19 @@ print(json.dumps({"success": True}))
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test skill", skill_path=skill_md, allowed_tools=()
         )
 
         # Create large arguments
         large_args = {"data": "x" * 500}
 
-        with caplog.at_level(logging.INFO):
-            try:
-                result = executor.execute(
-                    script_path=script.relative_to(skill_dir),
-                    arguments=large_args,
-                    skill_base_dir=skill_dir,
-                    skill_metadata=skill_metadata
-                )
-            except Exception:
-                pass
+        with caplog.at_level(logging.INFO), contextlib.suppress(Exception):
+            _ = executor.execute(
+                script_path=script.relative_to(skill_dir),
+                arguments=large_args,
+                skill_base_dir=skill_dir,
+                skill_metadata=skill_metadata,
+            )
 
         # Check that audit log was created with truncation
         audit_logs = [r for r in caplog.records if "AUDIT:" in r.message]
@@ -400,10 +364,7 @@ print(json.dumps({"success": True}))
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="audit-test-skill",
-            description="Test skill",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="audit-test-skill", description="Test skill", skill_path=skill_md, allowed_tools=()
         )
 
         with caplog.at_level(logging.INFO):
@@ -411,8 +372,9 @@ print(json.dumps({"success": True}))
                 script_path=script.relative_to(skill_dir),
                 arguments={"key": "value"},
                 skill_base_dir=skill_dir,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
+        assert result is not None
 
         audit_logs = [r for r in caplog.records if "AUDIT:" in r.message]
         assert len(audit_logs) == 1
@@ -429,7 +391,7 @@ print(json.dumps({"success": True}))
             "execution_time_ms=",
             "signal=",
             "stdout_truncated=",
-            "stderr_truncated="
+            "stderr_truncated=",
         ]
 
         for field in required_fields:
@@ -453,10 +415,7 @@ print(json.dumps({"success": True}))
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test skill",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test skill", skill_path=skill_md, allowed_tools=()
         )
 
         with caplog.at_level(logging.INFO):
@@ -464,8 +423,9 @@ print(json.dumps({"success": True}))
                 script_path=script.relative_to(skill_dir),
                 arguments={},
                 skill_base_dir=skill_dir,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
+        assert result is not None
 
         audit_logs = [r for r in caplog.records if "AUDIT:" in r.message]
         assert len(audit_logs) > 0
@@ -492,19 +452,15 @@ class TestSecurityBoundariesCheckpoint:
         ]
 
         for pattern in traversal_patterns:
-            with caplog.at_level(logging.ERROR):
-                with pytest.raises(PathSecurityError):
-                    executor._validate_script_path(
-                        Path(pattern),
-                        skill_dir
-                    )
+            with caplog.at_level(logging.ERROR), pytest.raises(PathSecurityError):
+                executor._validate_script_path(Path(pattern), skill_dir)
 
             # Verify each attempt is logged
             caplog.clear()
 
     def test_dangerous_permissions_blocked_with_audit(self, tmp_path, caplog):
         """Verify dangerous permissions are blocked with logging."""
-        if os.name == 'nt':
+        if os.name == "nt":
             pytest.skip("Unix-only test")
 
         skill_dir = tmp_path / "skill"
@@ -516,9 +472,8 @@ class TestSecurityBoundariesCheckpoint:
 
         executor = ScriptExecutor()
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(ScriptPermissionError):
-                executor._check_permissions(script)
+        with caplog.at_level(logging.ERROR), pytest.raises(ScriptPermissionError):
+            executor._check_permissions(script)
 
         # Verify both violations logged
         error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
@@ -541,10 +496,7 @@ class TestSecurityBoundariesCheckpoint:
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="audit-skill",
-            description="Audit test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="audit-skill", description="Audit test", skill_path=skill_md, allowed_tools=()
         )
 
         with caplog.at_level(logging.INFO):
@@ -552,8 +504,9 @@ class TestSecurityBoundariesCheckpoint:
                 script_path=script.relative_to(skill_dir),
                 arguments={"param": "value"},
                 skill_base_dir=skill_dir,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
+        assert result is not None
 
         # Verify audit log exists
         audit_logs = [r for r in caplog.records if "AUDIT:" in r.message]

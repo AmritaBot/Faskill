@@ -6,23 +6,18 @@ Tests focus on:
 """
 
 import json
-import logging
-import os
-import time
 from pathlib import Path
 
 import pytest
 
-from skillkit.core.exceptions import (
+from faskill.core.exceptions import (
     InterpreterNotFoundError,
-    ScriptNotFoundError,
 )
-from skillkit.core.models import SkillMetadata
-from skillkit.core.scripts import (
+from faskill.core.models import SkillMetadata
+from faskill.core.scripts import (
     ScriptDescriptionExtractor,
     ScriptDetector,
     ScriptExecutor,
-    ScriptMetadata,
 )
 
 
@@ -302,17 +297,14 @@ class TestScriptExecution:
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test", skill_path=skill_md, allowed_tools=()
         )
 
         result = executor.execute(
             script_path=script.relative_to(skill_dir),
             arguments={},
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.success
@@ -334,17 +326,14 @@ class TestScriptExecution:
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test", skill_path=skill_md, allowed_tools=()
         )
 
         result = executor.execute(
             script_path=script.relative_to(skill_dir),
             arguments={},
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert not result.success
@@ -359,19 +348,14 @@ class TestScriptExecution:
         scripts_dir = skill_dir / "scripts"
         scripts_dir.mkdir()
         script = scripts_dir / "echo.py"
-        script.write_text(
-            "import json, sys; args = json.load(sys.stdin); print(json.dumps(args))"
-        )
+        script.write_text("import json, sys; args = json.load(sys.stdin); print(json.dumps(args))")
 
         skill_md = skill_dir / "SKILL.md"
         skill_md.write_text("# Test")
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test", skill_path=skill_md, allowed_tools=()
         )
 
         test_args = {"key": "value", "number": 42}
@@ -379,7 +363,7 @@ class TestScriptExecution:
             script_path=script.relative_to(skill_dir),
             arguments=test_args,
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.success
@@ -396,7 +380,7 @@ class TestScriptExecution:
         scripts_dir.mkdir()
         script = scripts_dir / "env.py"
         script.write_text(
-            "import os; print(f'{os.environ.get(\"SKILL_NAME\")}:{os.environ.get(\"SKILL_BASE_DIR\")}')"
+            'import os; print(f\'{os.environ.get("SKILL_NAME")}:{os.environ.get("SKILL_BASE_DIR")}\')'
         )
 
         skill_md = skill_dir / "SKILL.md"
@@ -404,17 +388,14 @@ class TestScriptExecution:
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="my-skill",
-            description="Test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="my-skill", description="Test", skill_path=skill_md, allowed_tools=()
         )
 
         result = executor.execute(
             script_path=script.relative_to(skill_dir),
             arguments={},
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.success
@@ -428,26 +409,21 @@ class TestScriptExecution:
         scripts_dir = skill_dir / "scripts"
         scripts_dir.mkdir()
         script = scripts_dir / "output.py"
-        script.write_text(
-            "print('stdout line'); import sys; print('stderr line', file=sys.stderr)"
-        )
+        script.write_text("print('stdout line'); import sys; print('stderr line', file=sys.stderr)")
 
         skill_md = skill_dir / "SKILL.md"
         skill_md.write_text("# Test")
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test", skill_path=skill_md, allowed_tools=()
         )
 
         result = executor.execute(
             script_path=script.relative_to(skill_dir),
             arguments={},
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert "stdout line" in result.stdout
@@ -468,17 +444,14 @@ class TestScriptExecution:
 
         executor = ScriptExecutor(timeout=1)  # 1 second timeout
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test", skill_path=skill_md, allowed_tools=()
         )
 
         result = executor.execute(
             script_path=script.relative_to(skill_dir),
             arguments={},
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.timeout
@@ -500,17 +473,14 @@ class TestScriptExecution:
 
         executor = ScriptExecutor(max_output_size=100000)  # 100KB limit
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test", skill_path=skill_md, allowed_tools=()
         )
 
         result = executor.execute(
             script_path=script.relative_to(skill_dir),
             arguments={},
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.stdout_truncated
@@ -531,17 +501,14 @@ class TestScriptExecution:
 
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="test-skill",
-            description="Test",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="test-skill", description="Test", skill_path=skill_md, allowed_tools=()
         )
 
         result = executor.execute(
             script_path=script.relative_to(skill_dir),
             arguments={},
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         # Should take at least 100ms
@@ -624,10 +591,7 @@ print(json.dumps(result))
         # Test execution
         executor = ScriptExecutor()
         skill_metadata = SkillMetadata(
-            name="processor",
-            description="Processes data",
-            skill_path=skill_md,
-            allowed_tools=()
+            name="processor", description="Processes data", skill_path=skill_md, allowed_tools=()
         )
 
         test_input = {"data": "test value"}
@@ -635,7 +599,7 @@ print(json.dumps(result))
             script_path=scripts[0].path,
             arguments=test_input,
             skill_base_dir=skill_dir,
-            skill_metadata=skill_metadata
+            skill_metadata=skill_metadata,
         )
 
         assert result.success
@@ -671,7 +635,7 @@ print(json.dumps(result))
             name="multi-skill",
             description="Multiple scripts",
             skill_path=skill_md,
-            allowed_tools=()
+            allowed_tools=(),
         )
 
         for script_meta in scripts:
@@ -679,7 +643,7 @@ print(json.dumps(result))
                 script_path=script_meta.path,
                 arguments={},
                 skill_base_dir=skill_dir,
-                skill_metadata=skill_metadata
+                skill_metadata=skill_metadata,
             )
 
             assert result.success

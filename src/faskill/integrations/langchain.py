@@ -1,10 +1,10 @@
-"""LangChain integration for skillkit library.
+"""LangChain integration for faskill library.
 
 This module provides adapters to convert discovered skills into LangChain
 StructuredTool objects for use with LangChain agents.
 
 Installation:
-    pip install skillkit[langchain]
+    pip install faskill[langchain]
 """
 
 from typing import TYPE_CHECKING, Any, Dict, List, TypedDict
@@ -16,12 +16,12 @@ try:
 except ImportError as e:
     raise ImportError(
         "LangChain integration requires additional dependencies. "
-        "Install with: pip install skillkit[langchain]"
+        "Install with: pip install faskill[langchain]"
     ) from e
 
 if TYPE_CHECKING:
-    from skillkit.core.manager import SkillManager
-    from skillkit.core.models import Skill, SkillMetadata
+    from faskill.core.manager import SkillContext
+    from faskill.core.models import Skill, SkillMetadata
 
 
 class ScriptToolResult(TypedDict):
@@ -63,18 +63,19 @@ class ScriptInput(BaseModel):
         - arbitrary_types_allowed: True (allows any JSON-serializable types)
 
     Fields:
-        - arguments: Free-form dictionary containing script arguments
+        - arguments: Free-form string or dictionary.
+            Strings are passed directly; dicts are JSON-serialised to stdin.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    arguments: Dict[str, Any] = Field(
+    arguments: str | Dict[str, Any] = Field(
         default_factory=dict,
-        description="JSON-serializable arguments to pass to the script via stdin",
+        description="Arguments to pass to the script via stdin (string or dict)",
     )
 
 
-def create_langchain_tools(manager: "SkillManager") -> List[StructuredTool]:
+def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
     """Create LangChain StructuredTool objects from discovered skills with async support.
 
     Creates tools for both prompt-based skills and script-based skills:
@@ -91,20 +92,20 @@ def create_langchain_tools(manager: "SkillManager") -> List[StructuredTool]:
     loop value.
 
     Args:
-        manager: SkillManager instance with discovered skills
+        manager: SkillContext instance with discovered skills
 
     Returns:
         List of StructuredTool objects ready for agent use (sync and async)
         Includes both prompt-based and script-based tools (v0.3+)
 
     Raises:
-        Various skillkit exceptions during tool invocation (bubbled up)
+        Various faskill exceptions during tool invocation (bubbled up)
 
     Example (Sync Agent):
-        >>> from skillkit import SkillManager
-        >>> from skillkit.integrations.langchain import create_langchain_tools
+        >>> from faskill import SkillContext
+        >>> from faskill.integrations.langchain import create_langchain_tools
 
-        >>> manager = SkillManager()
+        >>> manager = SkillContext()
         >>> manager.discover()
 
         >>> tools = create_langchain_tools(manager)
@@ -120,7 +121,7 @@ def create_langchain_tools(manager: "SkillManager") -> List[StructuredTool]:
 
     Example (Async Agent):
         >>> # Initialize manager asynchronously
-        >>> manager = SkillManager()
+        >>> manager = SkillContext()
         >>> await manager.adiscover()
 
         >>> tools = create_langchain_tools(manager)
@@ -132,7 +133,7 @@ def create_langchain_tools(manager: "SkillManager") -> List[StructuredTool]:
     tools: List[StructuredTool] = []
 
     # Get skill metadata list (explicitly not qualified to get SkillMetadata objects)
-    skill_metadatas: List[SkillMetadata] = manager.list_skills(include_qualified=False)  # type: ignore[assignment]
+    skill_metadatas: List[SkillMetadata] = manager.list_skills(include_qualified=False)
 
     for skill_metadata in skill_metadatas:
         # CRITICAL: Use default parameter to capture skill name at function creation
@@ -161,7 +162,7 @@ def create_langchain_tools(manager: "SkillManager") -> List[StructuredTool]:
                 SizeLimitExceededError: If arguments exceed 1MB
             """
             # Three-layer error handling approach:
-            # 1. Let skillkit exceptions bubble up (detailed error messages)
+            # 1. Let faskill exceptions bubble up (detailed error messages)
             # 2. LangChain catches and formats them for agent
             # 3. Agent decides whether to retry or report to user
             return manager.invoke_skill(skill_name, arguments)
@@ -217,7 +218,7 @@ def create_langchain_tools(manager: "SkillManager") -> List[StructuredTool]:
     return tools
 
 
-def create_script_tools(skill: "Skill", manager: "SkillManager") -> List[StructuredTool]:
+def create_script_tools(skill: "Skill", manager: "SkillContext") -> List[StructuredTool]:
     """Create LangChain StructuredTool objects for all scripts in a skill.
 
     Each script is exposed as a separate tool with format "{skill_name}__{script_name}".
@@ -236,19 +237,19 @@ def create_script_tools(skill: "Skill", manager: "SkillManager") -> List[Structu
 
     Args:
         skill: Skill object with detected scripts (accessed via skill.scripts property)
-        manager: SkillManager instance for executing scripts
+        manager: SkillContext instance for executing scripts
 
     Returns:
         List of StructuredTool objects, one per detected script
 
     Raises:
-        Various skillkit exceptions during tool invocation (bubbled up as ToolException)
+        Various faskill exceptions during tool invocation (bubbled up as ToolException)
 
     Example:
-        >>> from skillkit import SkillManager
-        >>> from skillkit.integrations.langchain import create_script_tools
+        >>> from faskill import SkillContext
+        >>> from faskill.integrations.langchain import create_script_tools
 
-        >>> manager = SkillManager()
+        >>> manager = SkillContext()
         >>> manager.discover()
 
         >>> skill = manager.get_skill("pdf-extractor")
@@ -282,14 +283,14 @@ def create_script_tools(skill: "Skill", manager: "SkillManager") -> List[Structu
         # CRITICAL: Use default parameters to capture values at function creation time
         # This prevents Python's late-binding closure issue
         def invoke_script(
-            arguments: Dict[str, Any] | None = None,
+            arguments: str | Dict[str, Any] | None = None,
             skill_name: str = skill.metadata.name,
             script_name: str = script.name,
         ) -> str:
             """Sync script execution wrapper for sync agents.
 
             Args:
-                arguments: JSON-serializable dict to pass to script via stdin
+                arguments: String or dict to pass to script via stdin
                 skill_name: Skill name (captured from outer scope via default)
                 script_name: Script name (captured from outer scope via default)
 
@@ -301,6 +302,9 @@ def create_script_tools(skill: "Skill", manager: "SkillManager") -> List[Structu
             """
             if arguments is None:
                 arguments = {}
+            # Convert string arguments to dict form expected by execute_skill_script
+            if isinstance(arguments, str):
+                arguments = {"input": arguments}
             try:
                 result = manager.execute_skill_script(
                     skill_name=skill_name,
@@ -325,20 +329,20 @@ def create_script_tools(skill: "Skill", manager: "SkillManager") -> List[Structu
                 raise ToolException(error_msg)
 
             except Exception as e:
-                # Convert skillkit exceptions to ToolException
+                # Convert faskill exceptions to ToolException
                 # This includes: ScriptNotFoundError, InterpreterNotFoundError,
                 # PathSecurityError, etc.
                 raise ToolException(f"Script execution error: {str(e)}") from e
 
         async def ainvoke_script(
-            arguments: Dict[str, Any] | None = None,
+            arguments: str | Dict[str, Any] | None = None,
             skill_name: str = skill.metadata.name,
             script_name: str = script.name,
         ) -> str:
             """Async script execution wrapper for async agents.
 
             Args:
-                arguments: JSON-serializable dict to pass to script via stdin
+                arguments: String or dict to pass to script via stdin
                 skill_name: Skill name (captured from outer scope via default)
                 script_name: Script name (captured from outer scope via default)
 
@@ -350,6 +354,9 @@ def create_script_tools(skill: "Skill", manager: "SkillManager") -> List[Structu
             """
             if arguments is None:
                 arguments = {}
+            # Convert string arguments to dict form expected by execute_skill_script
+            if isinstance(arguments, str):
+                arguments = {"input": arguments}
             # Note: execute_skill_script is not async, so we use sync version
             # Future v0.3.1+ could add aexecute_skill_script for true async
             try:

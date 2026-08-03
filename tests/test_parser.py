@@ -5,15 +5,12 @@ from SKILL.md files, including error handling for malformed inputs.
 """
 
 import pytest
-from pathlib import Path
 
-from skillkit.core.parser import SkillParser
-from skillkit.core.exceptions import (
-    MissingRequiredFieldError,
+from faskill.core.exceptions import (
     InvalidYAMLError,
-    InvalidFrontmatterError,
+    MissingRequiredFieldError,
 )
-
+from faskill.core.parser import SkillParser
 
 # T027: Create test_parser.py with imports and file header ✓
 
@@ -131,11 +128,14 @@ def test_parse_invalid_yaml_syntax_raises_validation_error(fixtures_dir):
 
 
 # T034: test_parse_invalid_skills - Parametrized test for all invalid fixtures
-@pytest.mark.parametrize("fixture_name,expected_exception,expected_field", [
-    ("invalid-missing-name", MissingRequiredFieldError, "name"),
-    ("invalid-missing-description", MissingRequiredFieldError, "description"),
-    ("invalid-yaml-syntax", InvalidYAMLError, None),
-])
+@pytest.mark.parametrize(
+    "fixture_name,expected_exception,expected_field",
+    [
+        ("invalid-missing-name", MissingRequiredFieldError, "name"),
+        ("invalid-missing-description", MissingRequiredFieldError, "description"),
+        ("invalid-yaml-syntax", InvalidYAMLError, None),
+    ],
+)
 def test_parse_invalid_skills(fixtures_dir, fixture_name, expected_exception, expected_field):
     """Parametrized test validating all invalid skill fixtures raise correct exceptions.
 
@@ -207,5 +207,7 @@ def test_parse_skill_with_invalid_version_type_returns_none(fixtures_dir, caplog
     assert metadata.version is None
 
     # Verify warning was logged
-    assert any("version" in record.message.lower() and "string" in record.message.lower()
-               for record in caplog.records)
+    assert any(
+        "version" in record.message.lower() and "string" in record.message.lower()
+        for record in caplog.records
+    )

@@ -1,5 +1,5 @@
 """
-Performance Tests for skillkit Library
+Performance Tests for faskill Library
 
 Tests that library meets documented performance targets:
 - Discovery: <500ms for 50 skills
@@ -10,13 +10,12 @@ Tests that library meets documented performance targets:
 Tests are marked with @pytest.mark.performance for selective execution.
 """
 
-import sys
 import time
 from pathlib import Path
 
 import pytest
 
-from skillkit.core.manager import SkillManager
+from faskill.core.manager import SkillContext
 
 
 @pytest.mark.performance
@@ -31,11 +30,7 @@ def test_discovery_time_50_skills(temp_skills_dir: Path, skill_factory):
         )
 
     # Measure discovery time
-    manager = SkillManager(
-        project_skill_dir=str(temp_skills_dir),
-        anthropic_config_dir="",  # Explicit opt-out
-        plugin_dirs=[],
-    )
+    manager = SkillContext(skill_dirs=[str(temp_skills_dir)])
     start_time = time.perf_counter()
     manager.discover()
     end_time = time.perf_counter()
@@ -47,9 +42,7 @@ def test_discovery_time_50_skills(temp_skills_dir: Path, skill_factory):
     assert len(skills) == 50
 
     # Verify performance target (<500ms)
-    assert (
-        discovery_time_ms < 500
-    ), f"Discovery took {discovery_time_ms:.1f}ms, expected <500ms"
+    assert discovery_time_ms < 500, f"Discovery took {discovery_time_ms:.1f}ms, expected <500ms"
 
     print(f"\n✓ Discovery of 50 skills: {discovery_time_ms:.1f}ms")
 
@@ -59,13 +52,11 @@ def test_invocation_overhead_100_invocations(temp_skills_dir: Path, skill_factor
     """Test that average invocation overhead is <25ms for 100 sequential invocations."""
     # Create a simple skill
     skill_factory(
-        name="perf-skill",
-        description="Performance test skill",
-        content="Result: $ARGUMENTS",
+        name="perf-skill", description="Performance test skill", content="Result: $ARGUMENTS"
     )
 
     # Discover and load skill
-    manager = SkillManager(str(temp_skills_dir))
+    manager = SkillContext(skill_dirs=[str(temp_skills_dir)])
     manager.discover()
     skill = manager.load_skill("perf-skill")
 
@@ -85,9 +76,7 @@ def test_invocation_overhead_100_invocations(temp_skills_dir: Path, skill_factor
     avg_time_ms = sum(timings) / len(timings)
 
     # Verify performance target (<25ms average)
-    assert (
-        avg_time_ms < 25
-    ), f"Average invocation took {avg_time_ms:.2f}ms, expected <25ms"
+    assert avg_time_ms < 25, f"Average invocation took {avg_time_ms:.2f}ms, expected <25ms"
 
     print(f"\n✓ Average invocation overhead (100 calls): {avg_time_ms:.2f}ms")
 
@@ -106,11 +95,7 @@ def test_memory_usage_50_skills_10_percent_usage(temp_skills_dir: Path, skill_fa
         )
 
     # Discover all skills (metadata only)
-    manager = SkillManager(
-        project_skill_dir=str(temp_skills_dir),
-        anthropic_config_dir="",  # Explicit opt-out
-        plugin_dirs=[],
-    )
+    manager = SkillContext(skill_dirs=[str(temp_skills_dir)])
     manager.discover()
     skills_metadata = manager.list_skills()
     assert len(skills_metadata) == 50
@@ -161,7 +146,7 @@ def test_cache_effectiveness_no_repeated_file_reads(
     )
 
     # Discover and load skill
-    manager = SkillManager(str(temp_skills_dir))
+    manager = SkillContext(skill_dirs=[str(temp_skills_dir)])
     manager.discover()
     skill = manager.load_skill("cache-skill")
 
@@ -184,24 +169,20 @@ def test_cache_effectiveness_no_repeated_file_reads(
     # Second access - should use cache (no new reads)
     content2 = skill.content
     assert content1 == content2
-    assert (
-        read_count["count"] == initial_reads
-    ), "File should NOT be re-read on second access (cache should be used)"
+    assert read_count["count"] == initial_reads, (
+        "File should NOT be re-read on second access (cache should be used)"
+    )
 
     # Third access - verify cache still works
     content3 = skill.content
     assert content3 == content1
-    assert (
-        read_count["count"] == initial_reads
-    ), "File should NOT be re-read on third access"
+    assert read_count["count"] == initial_reads, "File should NOT be re-read on third access"
 
     # Multiple invocations - should not trigger additional reads
     for i in range(10):
         result = skill.invoke(arguments=f"test-{i}")
         assert f"Original content with test-{i}" in result
 
-    assert (
-        read_count["count"] == initial_reads
-    ), "File should NOT be re-read during invocations"
+    assert read_count["count"] == initial_reads, "File should NOT be re-read during invocations"
 
     print(f"\n✓ Cache effectiveness validated: File read once, accessed {3 + 10} times")

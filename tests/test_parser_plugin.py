@@ -13,12 +13,12 @@ from pathlib import Path
 
 import pytest
 
-from skillkit.core.exceptions import (
+from faskill.core.exceptions import (
     ManifestNotFoundError,
     ManifestParseError,
     ManifestValidationError,
 )
-from skillkit.core.parser import MAX_MANIFEST_SIZE, parse_plugin_manifest
+from faskill.core.parser import MAX_MANIFEST_SIZE, parse_plugin_manifest
 
 
 class TestParsePluginManifestValid:

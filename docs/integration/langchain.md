@@ -1,6 +1,6 @@
 # LangChain Integration
 
-This guide covers how to integrate skillkit with LangChain agents.
+This guide covers how to integrate faskill with LangChain agents.
 
 ## Table of Contents
 
@@ -15,8 +15,8 @@ This guide covers how to integrate skillkit with LangChain agents.
 ## Basic Integration (Sync)
 
 ```python
-from skillkit import SkillManager
-from skillkit.integrations.langchain import create_langchain_tools
+from faskill import SkillManager
+from faskill.integrations.langchain import create_langchain_tools
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from langchain.messages import HumanMessage
@@ -49,8 +49,8 @@ result = agent.invoke({"messages": messages})
 
 ```python
 import asyncio
-from skillkit import SkillManager
-from skillkit.integrations.langchain import create_langchain_tools
+from faskill import SkillManager
+from faskill.integrations.langchain import create_langchain_tools
 from langchain.agents import AgentExecutor
 from langchain_openai import ChatOpenAI
 
@@ -82,8 +82,8 @@ asyncio.run(run_agent())
 Scripts are automatically exposed as separate LangChain tools when you use `create_langchain_tools()`:
 
 ```python
-from skillkit import SkillManager
-from skillkit.integrations.langchain import create_langchain_tools
+from faskill import SkillManager
+from faskill.integrations.langchain import create_langchain_tools
 
 manager = SkillManager()
 manager.discover()
@@ -99,7 +99,7 @@ tools = create_langchain_tools(manager)
 
 ### How It Works
 
-1. **Automatic Detection**: During `discover()`, skillkit recursively scans for scripts in skill directories
+1. **Automatic Detection**: During `discover()`, faskill recursively scans for scripts in skill directories
 2. **Tool Creation**: Each script is exposed as a separate `StructuredTool` with its own name and description
 3. **Agent Access**: LangChain agents can invoke scripts like any other tool
 4. **Parameter Handling**: LLM-generated parameters are automatically normalized to lowercase before execution
@@ -136,7 +136,7 @@ Script tool IDs follow a validated format to ensure LLM provider compatibility:
 ### Error Handling
 
 ```python
-from skillkit.core.exceptions import ToolIDValidationError
+from faskill.core.exceptions import ToolIDValidationError
 
 try:
     tools = create_langchain_tools(manager)
@@ -153,8 +153,8 @@ except ToolIDValidationError as e:
 See `examples/langchain_agent.py` for a complete working example:
 
 ```python
-from skillkit import SkillManager
-from skillkit.integrations.langchain import create_langchain_tools
+from faskill import SkillManager
+from faskill.integrations.langchain import create_langchain_tools
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
@@ -177,8 +177,8 @@ See `examples/async_usage.py` for async patterns:
 
 ```python
 import asyncio
-from skillkit import SkillManager
-from skillkit.integrations.langchain import create_langchain_tools
+from faskill import SkillManager
+from faskill.integrations.langchain import create_langchain_tools
 
 async def main():
     manager = SkillManager()
@@ -195,8 +195,8 @@ asyncio.run(main())
 ### Example 3: Error Handling
 
 ```python
-from skillkit import SkillNotFoundError, ContentLoadError
-from skillkit.core.exceptions import ScriptNotFoundError
+from faskill import SkillNotFoundError, ContentLoadError
+from faskill.core.exceptions import ScriptNotFoundError
 
 try:
     tools = create_langchain_tools(manager)

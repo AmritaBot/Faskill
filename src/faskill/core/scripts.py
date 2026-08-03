@@ -46,7 +46,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 if TYPE_CHECKING:
-    from skillkit.core.models import SkillMetadata
+    from faskill.core.models import SkillMetadata
 
 # Type aliases for clarity
 ScriptArguments = Dict[str, Any]
@@ -101,7 +101,7 @@ def validate_tool_id(tool_id: str, skill_name: str, script_name: str) -> None:
     """
     import re
 
-    from skillkit.core.exceptions import ToolIDValidationError
+    from faskill.core.exceptions import ToolIDValidationError
 
     # Check length
     if len(tool_id) > 60:
@@ -218,7 +218,7 @@ class ScriptMetadata:
 class ScriptExecutionResult:
     """Result of executing a script with security controls.
 
-    Returned by ScriptExecutor.execute() and SkillManager.execute_skill_script().
+    Returned by ScriptExecutor.execute() and SkillContext.execute_skill_script().
     Contains all captured output, exit status, timing, and error information.
 
     Attributes:
@@ -788,7 +788,7 @@ class ScriptExecutor:
             - Rejects paths pointing outside skill base directory
             - Validates symlinks don't point outside skill directory
         """
-        from skillkit.core.exceptions import PathSecurityError
+        from faskill.core.exceptions import PathSecurityError
 
         # Ensure skill_base_dir is absolute
         skill_base_dir = Path(os.path.realpath(skill_base_dir))
@@ -871,7 +871,7 @@ class ScriptExecutor:
         """
         import stat
 
-        from skillkit.core.exceptions import ScriptPermissionError
+        from faskill.core.exceptions import ScriptPermissionError
 
         # Skip permission checks on Windows
         if os.name == "nt":
@@ -918,7 +918,7 @@ class ScriptExecutor:
             2. Validate interpreter exists in PATH using shutil.which()
             3. Raise error if interpreter not found
         """
-        from skillkit.core.exceptions import InterpreterNotFoundError
+        from faskill.core.exceptions import InterpreterNotFoundError
 
         # Get interpreter from extension
         ext = script_path.suffix.lower()
@@ -948,7 +948,7 @@ class ScriptExecutor:
             ArgumentSerializationError: If arguments cannot be serialized
             ArgumentSizeError: If serialized arguments exceed 10MB
         """
-        from skillkit.core.exceptions import ArgumentSerializationError, ArgumentSizeError
+        from faskill.core.exceptions import ArgumentSerializationError, ArgumentSizeError
 
         try:
             serialized = json.dumps(arguments, ensure_ascii=False, indent=None)
@@ -978,16 +978,16 @@ class ScriptExecutor:
             - SKILL_NAME: Name of the skill
             - SKILL_BASE_DIR: Absolute path to skill directory
             - SKILL_VERSION: Version from metadata (if available)
-            - SKILLKIT_VERSION: Current skillkit version
+            - faskill_VERSION: Current faskill version
         """
-        import skillkit
+        import faskill
 
         env = os.environ.copy()
 
         # Inject skill metadata
         env["SKILL_NAME"] = skill_metadata.name
         env["SKILL_BASE_DIR"] = str(skill_base_dir)
-        env["SKILLKIT_VERSION"] = skillkit.__version__
+        env["faskill_VERSION"] = faskill.__version__
         env["SKILL_VERSION"] = skill_metadata.version or "0.0.0"
 
         return env

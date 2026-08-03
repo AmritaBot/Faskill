@@ -3,14 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "skillkit"
+name = "faskill"
 version = "0.4.0"
 description = "Python library implementing Anthropic's Agent Skills functionality for LLM-powered agents"
 readme = "README.md"
-license = {text = "MIT"}
-authors = [
-    {name = "Massimo Olivieri", email = "olivmassimo@gmail.com"}
-]
+license = { text = "MIT" }
+authors = [{ name = "Massimo Olivieri", email = "olivmassimo@gmail.com" }]
 keywords = [
     "skills",
     "agents",
@@ -23,7 +21,7 @@ keywords = [
     "tools",
     "agent-tools",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.16"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -37,38 +35,22 @@ classifiers = [
 ]
 dependencies = [
     "PyYAML>=6.0",
+    "aiofiles>=23.0",
+    "aiologic>=0.17.1",
 ]
 
 [project.optional-dependencies]
-langchain = [
-    "langchain-core>=0.1.0",
-    "pydantic>=2.0",
-]
-async = [
-    # Note: asyncio is stdlib, no additional async I/O dependencies needed
-    # We use asyncio.to_thread() pattern per research decision 1
-]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "pytest-asyncio>=0.21",
-    "ruff>=0.1.0",
-    "mypy>=1.0",
-    "types-PyYAML",
-]
-all = [
-    "langchain-core>=0.1.0",
-    "pydantic>=2.0",
-]
+langchain = ["langchain-core>=0.1.0", "pydantic>=2.0"]
+all = ["langchain-core>=0.1.0", "pydantic>=2.0"]
 
 [project.urls]
-Homepage = "https://github.com/maxvaega/skillkit"
-Repository = "https://github.com/maxvaega/skillkit"
-Documentation = "https://github.com/maxvaega/skillkit#readme"
-Issues = "https://github.com/maxvaega/skillkit/issues"
+Homepage = "https://github.com/maxvaega/faskill"
+Repository = "https://github.com/maxvaega/faskill"
+Documentation = "https://github.com/maxvaega/faskill#readme"
+Issues = "https://github.com/maxvaega/faskill/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/skillkit"]
+packages = ["src/faskill"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -87,7 +69,7 @@ addopts = [
     "-v",
     "--strict-markers",
     "--strict-config",
-    "--cov=src/skillkit",
+    "--cov=src/faskill",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-fail-under=70",
@@ -95,12 +77,8 @@ addopts = [
 
 [tool.coverage.run]
 branch = true
-source = ["src/skillkit"]
-omit = [
-    "*/tests/*",
-    "*/test_*.py",
-    "*/__pycache__/*",
-]
+source = ["src/faskill"]
+omit = ["*/tests/*", "*/test_*.py", "*/__pycache__/*"]
 
 [tool.coverage.report]
 precision = 2
@@ -113,31 +91,6 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
 ]
-
-[tool.mypy]
-python_version = "3.10"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_any_generics = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true
-
-[[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
-disallow_untyped_calls = false
-
 [tool.ruff]
 line-length = 100
 target-version = "py310"
@@ -169,4 +122,17 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["skillkit"]
+known-first-party = ["faskill"]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1.0",
+    "types-PyYAML",
+    "faskill[all]",
+    "pyright>=1.1.411",
+    "amrita-core>=0.12.7",
+    "pytest-benchmark>=5.2.3",
+]

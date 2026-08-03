@@ -1,24 +1,24 @@
 """
-Shared pytest fixtures and configuration for skillkit test suite.
+Shared pytest fixtures and configuration for faskill test suite.
 
 This module provides:
 - temp_skills_dir: Temporary directory for test skills
 - skill_factory: Factory function for creating SKILL.md files programmatically
 - sample_skills: Pre-created set of 5 diverse sample skills
 - fixtures_dir: Path to static test fixtures
-- isolated_manager: SkillManager with all default discovery disabled (for isolated tests)
-- skill_manager_async: Async-initialized SkillManager with example skills
+- isolated_manager: SkillContext with all default discovery disabled (for isolated tests)
+- skill_manager_async: Async-initialized SkillContext with example skills
 - Helper functions for common assertions and complex skill creation
 """
 
 import os
 import sys
 from pathlib import Path
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 import pytest
 
-from skillkit.core.models import SkillMetadata
+from faskill.core.models import SkillMetadata
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def skill_factory(temp_skills_dir: Path) -> Callable[..., Path]:
         name: str,
         description: str,
         content: str,
-        allowed_tools: Optional[List[str]] = None,
+        allowed_tools: List[str] | None = None,
         **extra_frontmatter: Any,
     ) -> Path:
         """
@@ -147,9 +147,9 @@ def assert_skill_metadata_valid(metadata: SkillMetadata) -> None:
     assert metadata.name, "Metadata name should not be empty"
     assert metadata.description, "Metadata description should not be empty"
     assert metadata.skill_path.exists(), f"Skill path {metadata.skill_path} should exist"
-    assert (
-        metadata.skill_path.name == "SKILL.md"
-    ), f"Skill path should end with SKILL.md, got {metadata.skill_path.name}"
+    assert metadata.skill_path.name == "SKILL.md", (
+        f"Skill path should end with SKILL.md, got {metadata.skill_path.name}"
+    )
 
 
 def create_large_skill(temp_skills_dir: Path, size_kb: int = 500) -> Path:
@@ -240,7 +240,7 @@ def skills_directory() -> Path:
 @pytest.fixture
 def isolated_manager(temp_skills_dir: Path):
     """
-    Create a SkillManager with all default discovery disabled (isolated testing).
+    Create a SkillContext with all default discovery disabled (isolated testing).
 
     This fixture creates a manager that ONLY discovers skills from the temp_skills_dir,
     explicitly opting out of:
@@ -249,7 +249,7 @@ def isolated_manager(temp_skills_dir: Path):
     - Additional search paths
 
     Returns:
-        SkillManager: Manager configured for isolated testing (not yet discovered)
+        SkillContext: Manager configured for isolated testing (not yet discovered)
 
     Usage:
         >>> def test_my_feature(isolated_manager, skill_factory):
@@ -261,29 +261,25 @@ def isolated_manager(temp_skills_dir: Path):
         This manager uses temp_skills_dir as project_skill_dir. Call discover()
         after setting up your test skills with skill_factory.
     """
-    from skillkit import SkillManager
+    from faskill import SkillContext
 
-    return SkillManager(
-        project_skill_dir=temp_skills_dir,
-        anthropic_config_dir="",  # Explicit opt-out of default discovery
-        plugin_dirs=[],  # Explicit opt-out of plugins
-    )
+    return SkillContext(skill_dirs=[temp_skills_dir])
 
 
 @pytest.fixture
 async def skill_manager_async(skills_directory: Path):
     """
-    Create and initialize a SkillManager asynchronously.
+    Create and initialize a SkillContext asynchronously.
 
     Returns:
-        SkillManager: Async-initialized manager with discovered skills
+        SkillContext: Async-initialized manager with discovered skills
 
     Note:
         This fixture uses async discovery and sets init_mode to ASYNC.
         Use this for testing async invocation and LangChain async integration.
     """
-    from skillkit import SkillManager
+    from faskill import SkillContext
 
-    manager = SkillManager(skills_directory)
+    manager = SkillContext(skill_dirs=[skills_directory])
     await manager.adiscover()
     return manager

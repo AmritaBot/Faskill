@@ -3,9 +3,9 @@
 
 This script demonstrates advanced PDF processing capabilities.
 """
-import sys
+
 import json
-import os
+import sys
 
 
 def parse_pdf(file_path: str, extract_tables: bool, extract_forms: bool):
@@ -24,10 +24,7 @@ def parse_pdf(file_path: str, extract_tables: bool, extract_forms: bool):
     Returns:
         dict with parsed data
     """
-    result = {
-        "file_path": file_path,
-        "extracted_data": {}
-    }
+    result = {"file_path": file_path, "extracted_data": {}}
 
     if extract_tables:
         result["extracted_data"]["tables"] = [
@@ -38,8 +35,8 @@ def parse_pdf(file_path: str, extract_tables: bool, extract_forms: bool):
                 "data": [
                     ["Header1", "Header2", "Header3"],
                     ["Row1Col1", "Row1Col2", "Row1Col3"],
-                    ["Row2Col1", "Row2Col2", "Row2Col3"]
-                ]
+                    ["Row2Col1", "Row2Col2", "Row2Col3"],
+                ],
             }
         ]
 
@@ -47,7 +44,7 @@ def parse_pdf(file_path: str, extract_tables: bool, extract_forms: bool):
         result["extracted_data"]["forms"] = {
             "name": "John Doe",
             "email": "john@example.com",
-            "checkbox_agree": True
+            "checkbox_agree": True,
         }
 
     return result

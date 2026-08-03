@@ -1,4 +1,4 @@
-"""Integration tests for SkillManager with plugin support.
+"""Integration tests for SkillContext with plugin support.
 
 This module tests:
 - Plugin source building with manifest parsing
@@ -12,13 +12,13 @@ from pathlib import Path
 
 import pytest
 
-from skillkit.core.exceptions import SkillNotFoundError
-from skillkit.core.manager import SkillManager
-from skillkit.core.models import QualifiedSkillName
+from faskill.core.exceptions import SkillNotFoundError
+from faskill.core.manager import SkillContext
+from faskill.core.models import QualifiedSkillName, SourceType
 
 
-class TestSkillManagerPluginSources:
-    """Test SkillManager plugin source building."""
+class TestSkillContextPluginSources:
+    """Test SkillContext plugin source building."""
 
     def test_build_sources_with_valid_plugin(self):
         """Test building sources with a valid plugin directory."""
@@ -27,14 +27,10 @@ class TestSkillManagerPluginSources:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(
-            project_skill_dir="",  # Explicit opt-out
-            anthropic_config_dir="",  # Explicit opt-out
-            plugin_dirs=[plugin_dir]
-        )
+        manager = SkillContext(skill_dirs=[plugin_dir])
 
-        assert len(manager.sources) == 1
-        source = manager.sources[0]
+        assert len(manager._sources) == 1
+        source = manager._sources[0]
 
         assert source.plugin_name == "valid-plugin"
         assert source.plugin_manifest is not None
@@ -48,15 +44,11 @@ class TestSkillManagerPluginSources:
         if not (plugin1.exists() and plugin2.exists()):
             pytest.skip("Fixtures not found")
 
-        manager = SkillManager(
-            project_skill_dir="",  # Explicit opt-out
-            anthropic_config_dir="",  # Explicit opt-out
-            plugin_dirs=[plugin1, plugin2]
-        )
+        manager = SkillContext(skill_dirs=[plugin1, plugin2])
 
-        assert len(manager.sources) == 2
+        assert len(manager._sources) == 2
 
-        plugin_names = {s.plugin_name for s in manager.sources}
+        plugin_names = {s.plugin_name for s in manager._sources}
         assert "valid-plugin" in plugin_names
         assert "multi-dir-plugin" in plugin_names
 
@@ -67,18 +59,15 @@ class TestSkillManagerPluginSources:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        # Should create source with fallback plugin name (directory name)
-        manager = SkillManager(
-            project_skill_dir="",  # Explicit opt-out
-            anthropic_config_dir="",  # Explicit opt-out
-            plugin_dirs=[plugin_dir]
-        )
+        # Should create a CUSTOM source (invalid manifest → not a plugin)
+        manager = SkillContext(skill_dirs=[plugin_dir])
 
-        assert len(manager.sources) == 1
-        source = manager.sources[0]
+        assert len(manager._sources) == 1
+        source = manager._sources[0]
 
-        # Should use directory name as fallback
-        assert source.plugin_name == "invalid-manifest-plugin"
+        # Invalid manifest → treated as CUSTOM, not as plugin
+        assert source.source_type == SourceType.CUSTOM
+        assert source.plugin_name is None
         assert source.plugin_manifest is None
 
     def test_build_sources_with_mixed_directories(self):
@@ -88,17 +77,14 @@ class TestSkillManagerPluginSources:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(
-            project_skill_dir=Path("tests/fixtures/skills"),
-            plugin_dirs=[plugin_dir],
-        )
+        manager = SkillContext(skill_dirs=[Path("tests/fixtures/skills"), plugin_dir])
 
         # Should have both project and plugin sources
-        source_types = {s.source_type.value for s in manager.sources}
+        source_types = {s.source_type.value for s in manager._sources}
         assert "project" in source_types or "plugin" in source_types
 
 
-class TestSkillManagerPluginDiscovery:
+class TestSkillContextPluginDiscovery:
     """Test skill discovery from plugins."""
 
     def test_discover_skills_from_plugin(self):
@@ -108,7 +94,7 @@ class TestSkillManagerPluginDiscovery:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         manager.discover()
 
         skills = manager.list_skills()
@@ -123,7 +109,7 @@ class TestSkillManagerPluginDiscovery:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         manager.discover()
 
         skills = manager.list_skills()
@@ -141,7 +127,7 @@ class TestSkillManagerPluginDiscovery:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         await manager.adiscover()
 
         skills = manager.list_skills()
@@ -160,14 +146,14 @@ class TestPluginSkillNamespacing:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         manager.discover()
 
         # Check plugin namespace exists
-        assert "valid-plugin" in manager._plugin_skills
+        assert "valid-plugin" in manager._registry._plugin_skills
 
         # Check skill is in plugin namespace
-        assert "test-skill" in manager._plugin_skills["valid-plugin"]
+        assert "test-skill" in manager._registry._plugin_skills["valid-plugin"]
 
     def test_plugin_skills_also_in_main_registry(self):
         """Test that plugin skills are also in main _skills registry (if no conflicts)."""
@@ -176,11 +162,11 @@ class TestPluginSkillNamespacing:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         manager.discover()
 
         # Should also be in main registry
-        assert "test-skill" in manager._skills
+        assert "test-skill" in manager._registry._skills
 
 
 class TestQualifiedNameLookups:
@@ -193,7 +179,7 @@ class TestQualifiedNameLookups:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         manager.discover()
 
         # Should be able to get skill with qualified name
@@ -208,7 +194,7 @@ class TestQualifiedNameLookups:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         manager.discover()
 
         # Should also work with simple name
@@ -223,7 +209,7 @@ class TestQualifiedNameLookups:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         manager.discover()
 
         with pytest.raises(SkillNotFoundError) as exc_info:
@@ -238,7 +224,7 @@ class TestQualifiedNameLookups:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(plugin_dirs=[plugin_dir])
+        manager = SkillContext(skill_dirs=[plugin_dir])
         manager.discover()
 
         with pytest.raises(SkillNotFoundError) as exc_info:
@@ -250,13 +236,13 @@ class TestQualifiedNameLookups:
 class TestPluginConflictResolution:
     """Test conflict resolution with plugins."""
 
-    def test_project_skill_wins_over_plugin(self, tmp_path):
-        """Test that project skills have higher priority than plugin skills."""
-        # Create project skill with same name as plugin skill
+    def test_plugin_skill_wins_over_custom(self, tmp_path):
+        """Test that plugin skills have higher priority than custom skills."""
+        # Create custom skill with same name as plugin skill
         project_dir = tmp_path / "skills" / "test-skill"
         project_dir.mkdir(parents=True)
         (project_dir / "SKILL.md").write_text(
-            "---\nname: test-skill\ndescription: Project version\n---\n"
+            "---\nname: test-skill\ndescription: Custom version\n---\n"
         )
 
         plugin_dir = Path("tests/fixtures/plugins/valid-plugin")
@@ -264,24 +250,22 @@ class TestPluginConflictResolution:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(
-            project_skill_dir=tmp_path / "skills",
-            plugin_dirs=[plugin_dir],
-        )
+        manager = SkillContext(skill_dirs=[tmp_path / "skills", plugin_dir])
         manager.discover()
 
-        # Simple name should get project version (higher priority)
+        # Simple name should get plugin version (higher priority: 10 > 5)
         skill = manager.get_skill("test-skill")
 
-        assert "Project version" in skill.description
+        # Plugin fixture has "test plugin" or "valid plugin" in description
+        assert "valid plugin" in skill.description.lower() or "plugin" in skill.description.lower()
 
     def test_qualified_name_accesses_plugin_version_despite_conflict(self, tmp_path):
         """Test that qualified name can access plugin version even with conflict."""
-        # Create project skill with same name as plugin skill
+        # Create custom skill with same name as plugin skill
         project_dir = tmp_path / "skills" / "test-skill"
         project_dir.mkdir(parents=True)
         (project_dir / "SKILL.md").write_text(
-            "---\nname: test-skill\ndescription: Project version\n---\n"
+            "---\nname: test-skill\ndescription: Custom version\n---\n"
         )
 
         plugin_dir = Path("tests/fixtures/plugins/valid-plugin")
@@ -289,10 +273,7 @@ class TestPluginConflictResolution:
         if not plugin_dir.exists():
             pytest.skip("Fixture not found")
 
-        manager = SkillManager(
-            project_skill_dir=tmp_path / "skills",
-            plugin_dirs=[plugin_dir],
-        )
+        manager = SkillContext(skill_dirs=[tmp_path / "skills", plugin_dir])
         manager.discover()
 
         # Qualified name should access plugin version
@@ -309,11 +290,11 @@ class TestPluginConflictResolution:
         if not (plugin1.exists() and plugin2.exists()):
             pytest.skip("Fixtures not found")
 
-        manager = SkillManager(plugin_dirs=[plugin1, plugin2])
+        manager = SkillContext(skill_dirs=[plugin1, plugin2])
         manager.discover()
 
         # Each plugin's skills should be accessible via qualified names
-        if "test-skill" in manager._plugin_skills.get("valid-plugin", {}):
+        if "test-skill" in manager._registry._plugin_skills.get("valid-plugin", {}):
             skill1 = manager.get_skill("valid-plugin:test-skill")
             assert skill1.name == "test-skill"
 
@@ -378,11 +359,7 @@ class TestPluginIntegrationEndToEnd:
             pytest.skip("Fixture not found")
 
         # 1. Initialize manager with plugin
-        manager = SkillManager(
-            project_skill_dir="",  # Explicit opt-out
-            anthropic_config_dir="",  # Explicit opt-out
-            plugin_dirs=[plugin_dir]
-        )
+        manager = SkillContext(skill_dirs=[plugin_dir])
 
         # 2. Discover skills
         manager.discover()
@@ -412,11 +389,7 @@ class TestPluginIntegrationEndToEnd:
             pytest.skip("Fixture not found")
 
         # 1. Initialize manager
-        manager = SkillManager(
-            project_skill_dir="",  # Explicit opt-out
-            anthropic_config_dir="",  # Explicit opt-out
-            plugin_dirs=[plugin_dir]
-        )
+        manager = SkillContext(skill_dirs=[plugin_dir])
 
         # 2. Async discover
         await manager.adiscover()

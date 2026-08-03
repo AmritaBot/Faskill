@@ -3,8 +3,9 @@
 
 This script validates JSON input/output handling.
 """
-import sys
+
 import json
+import sys
 
 
 def main():
@@ -17,7 +18,7 @@ def main():
         output = {
             "status": "received",
             "input_keys": list(data.keys()),
-            "message": data.get("message", "No message provided")
+            "message": data.get("message", "No message provided"),
         }
 
         # Write JSON to stdout

@@ -2,7 +2,7 @@
 
 This module tests the async invocation capabilities added in v0.2:
 - Skill.ainvoke() async method
-- SkillManager.ainvoke_skill() async method
+- SkillContext.ainvoke_skill() async method
 - AsyncStateError validation
 - Concurrent invocations
 - State management (sync vs async mode)
@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from skillkit import SkillManager
-from skillkit.core.exceptions import AsyncStateError, SkillNotFoundError, SkillsUseError
-from skillkit.core.models import InitMode
+from faskill import SkillContext
+from faskill.core.exceptions import AsyncStateError, SkillNotFoundError, SkillsUseError
+from faskill.core.models import InitMode
 
 
 class TestAsyncSkillInvocation:
@@ -91,8 +91,8 @@ class TestAsyncSkillInvocation:
     @pytest.mark.asyncio
     async def test_skill_ainvoke_content_loading_error(self, tmp_path):
         """Test ainvoke handles file read errors gracefully."""
-        from skillkit.core.exceptions import ContentLoadError
-        from skillkit.core.models import Skill, SkillMetadata
+        from faskill.core.exceptions import ContentLoadError
+        from faskill.core.models import Skill, SkillMetadata
 
         # Create a skill file, then delete it after metadata creation
         skill_dir = tmp_path / "missing-skill"
@@ -101,14 +101,11 @@ class TestAsyncSkillInvocation:
 
         # Create the file temporarily for metadata validation
         skill_path.write_text(
-            "---\nname: missing-skill\ndescription: Test skill\n---\n\nContent",
-            encoding="utf-8"
+            "---\nname: missing-skill\ndescription: Test skill\n---\n\nContent", encoding="utf-8"
         )
 
         metadata = SkillMetadata(
-            name="missing-skill",
-            description="Test skill",
-            skill_path=skill_path,
+            name="missing-skill", description="Test skill", skill_path=skill_path
         )
 
         # Now delete the file to simulate it being removed after discovery
@@ -123,7 +120,7 @@ class TestAsyncSkillInvocation:
 
 
 class TestAsyncManagerInvocation:
-    """Test async skill invocation via SkillManager.ainvoke_skill()."""
+    """Test async skill invocation via SkillContext.ainvoke_skill()."""
 
     @pytest.mark.asyncio
     async def test_manager_ainvoke_skill_basic(self, skill_manager_async):
@@ -161,9 +158,7 @@ class TestAsyncManagerInvocation:
             assert f"review code {i}" in result
 
     @pytest.mark.asyncio
-    async def test_manager_ainvoke_skill_different_skills_concurrent(
-        self, skill_manager_async
-    ):
+    async def test_manager_ainvoke_skill_different_skills_concurrent(self, skill_manager_async):
         """Test concurrent invocations of different skills."""
         results = await asyncio.gather(
             skill_manager_async.ainvoke_skill("markdown-formatter", "test 1"),
@@ -182,29 +177,24 @@ class TestAsyncStateManagement:
     """Test async/sync state management and error handling."""
 
     @pytest.mark.asyncio
-    async def test_ainvoke_skill_before_adiscover_raises_error(
-        self, skills_directory: Path
-    ):
+    async def test_ainvoke_skill_before_adiscover_raises_error(self, skills_directory: Path):
         """Test that ainvoke_skill before adiscover raises SkillsUseError."""
-        manager = SkillManager(skills_directory)
+        manager = SkillContext(skill_dirs=[skills_directory])
 
         # Attempt to invoke before discovery
-        with pytest.raises(
-            SkillsUseError, match="Manager not initialized. Call adiscover"
-        ):
+        with pytest.raises(SkillsUseError, match=r"Context not initialised. Call adiscover\(\)"):
             await manager.ainvoke_skill("markdown-formatter", "test")
 
     def test_ainvoke_skill_after_sync_discover_raises_async_state_error(
         self, skills_directory: Path
     ):
         """Test that ainvoke_skill after sync discover raises AsyncStateError."""
-        manager = SkillManager(skills_directory)
+        manager = SkillContext(skill_dirs=[skills_directory])
         manager.discover()  # Sync discovery
 
         # Attempt async invocation after sync discovery
         with pytest.raises(
-            AsyncStateError,
-            match="Manager was initialized with discover\\(\\) \\(sync mode\\)",
+            AsyncStateError, match="Context was initialised with discover\\(\\) \\(sync mode\\)"
         ):
             # Need to use asyncio.run to execute the coroutine
             asyncio.run(manager.ainvoke_skill("markdown-formatter", "test"))
@@ -212,7 +202,7 @@ class TestAsyncStateManagement:
     @pytest.mark.asyncio
     async def test_init_mode_transitions_to_async(self, skills_directory: Path):
         """Test that init_mode transitions to ASYNC after adiscover."""
-        manager = SkillManager(skills_directory)
+        manager = SkillContext(skill_dirs=[skills_directory])
 
         # Initially uninitialized
         assert manager.init_mode == InitMode.UNINITIALIZED
@@ -228,7 +218,7 @@ class TestAsyncStateManagement:
         self, skills_directory: Path
     ):
         """Test that sync invoke_skill is prevented after async discover."""
-        manager = SkillManager(skills_directory)
+        manager = SkillContext(skill_dirs=[skills_directory])
         await manager.adiscover()
 
         # Note: invoke_skill doesn't check init_mode in current implementation
@@ -240,7 +230,7 @@ class TestAsyncStateManagement:
     @pytest.mark.asyncio
     async def test_multiple_adiscover_calls_allowed(self, skills_directory: Path):
         """Test that multiple adiscover calls are allowed (idempotent)."""
-        manager = SkillManager(skills_directory)
+        manager = SkillContext(skill_dirs=[skills_directory])
 
         # First discovery
         await manager.adiscover()
@@ -257,7 +247,7 @@ class TestAsyncStateManagement:
     @pytest.mark.asyncio
     async def test_ainvoke_skill_after_multiple_adiscover(self, skills_directory: Path):
         """Test that ainvoke_skill works after multiple adiscover calls."""
-        manager = SkillManager(skills_directory)
+        manager = SkillContext(skill_dirs=[skills_directory])
 
         # Multiple discoveries
         await manager.adiscover()
@@ -295,12 +285,10 @@ class TestAsyncPerformance:
 
         # Async should be within 5ms of sync (content is cached)
         time_diff = abs(async_time - sync_time)
-        assert time_diff < 0.005, f"Async overhead too high: {time_diff*1000:.2f}ms"
+        assert time_diff < 0.005, f"Async overhead too high: {time_diff * 1000:.2f}ms"
 
     @pytest.mark.asyncio
-    async def test_concurrent_invocations_work_correctly(
-        self, skill_manager_async
-    ):
+    async def test_concurrent_invocations_work_correctly(self, skill_manager_async):
         """Test that concurrent invocations complete successfully.
 
         Note: Performance comparison is not reliable due to caching,

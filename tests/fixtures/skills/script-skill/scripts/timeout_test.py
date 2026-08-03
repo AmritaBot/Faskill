@@ -3,6 +3,7 @@
 
 This script enters an infinite loop to test timeout handling.
 """
+
 import time
 
 print("Starting infinite loop...")

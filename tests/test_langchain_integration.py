@@ -1,4 +1,4 @@
-"""LangChain integration tests for skillkit library.
+"""LangChain integration tests for faskill library.
 
 Tests validate that create_langchain_tools() correctly converts discovered skills
 into LangChain StructuredTool objects that can be invoked by agents.
@@ -15,15 +15,15 @@ Markers:
 """
 
 import pytest
-from pathlib import Path
 
 # Skip all tests in this file if langchain-core is not installed
 pytest.importorskip("langchain_core")
 
-from skillkit.core.manager import SkillManager
-from skillkit.core.exceptions import SkillNotFoundError, SizeLimitExceededError
-from skillkit.integrations.langchain import create_langchain_tools, SkillInput
 from langchain_core.tools import StructuredTool
+
+from faskill.core.exceptions import SizeLimitExceededError, SkillNotFoundError
+from faskill.core.manager import SkillContext
+from faskill.integrations.langchain import create_langchain_tools
 
 
 @pytest.mark.integration
@@ -113,7 +113,7 @@ def test_langchain_tool_has_correct_description(temp_skills_dir, skill_factory):
     """
     skill_factory("markdown-formatter", "Formats markdown documents", "Format: $ARGUMENTS")
 
-    manager = SkillManager(temp_skills_dir)
+    manager = SkillContext(skill_dirs=[temp_skills_dir])
     manager.discover()
     tools = create_langchain_tools(manager)
 
@@ -134,7 +134,7 @@ def test_langchain_tool_invocation_with_arguments(temp_skills_dir, skill_factory
     """
     skill_factory("greeter", "Greets someone", "Hello $ARGUMENTS!")
 
-    manager = SkillManager(temp_skills_dir)
+    manager = SkillContext(skill_dirs=[temp_skills_dir])
     manager.discover()
     tools = create_langchain_tools(manager)
 
@@ -164,7 +164,7 @@ def test_langchain_tool_invocation_returns_content(temp_skills_dir, skill_factor
     # Test without placeholder
     skill_factory("static", "Returns static content", "This is static content")
 
-    manager = SkillManager(temp_skills_dir)
+    manager = SkillContext(skill_dirs=[temp_skills_dir])
     manager.discover()
     tools = create_langchain_tools(manager)
 
@@ -195,7 +195,7 @@ def test_langchain_tool_invocation_with_long_arguments(temp_skills_dir, skill_fa
     """
     skill_factory("processor", "Processes large input", "Processed: $ARGUMENTS")
 
-    manager = SkillManager(temp_skills_dir)
+    manager = SkillContext(skill_dirs=[temp_skills_dir])
     manager.discover()
     tools = create_langchain_tools(manager)
 
@@ -218,13 +218,13 @@ def test_langchain_tool_error_propagation(temp_skills_dir, skill_factory):
     """Test skill errors propagate to LangChain correctly.
 
     Validates:
-        - skillkit exceptions bubble up through tool
+        - faskill exceptions bubble up through tool
         - LangChain can catch and handle exceptions
         - Error messages preserved for agent debugging
     """
     skill_factory("test-skill", "Test skill", "Content: $ARGUMENTS")
 
-    manager = SkillManager(temp_skills_dir)
+    manager = SkillContext(skill_dirs=[temp_skills_dir])
     manager.discover()
     tools = create_langchain_tools(manager)
 
@@ -232,7 +232,7 @@ def test_langchain_tool_error_propagation(temp_skills_dir, skill_factory):
 
     # Test 1: Skill not found error (after discovery but skill removed)
     # Remove skill from manager's cache to simulate deletion
-    manager._skills.clear()
+    manager._registry._skills.clear()
 
     with pytest.raises(SkillNotFoundError) as exc_info:
         tool.invoke(input={"arguments": "test"})
@@ -253,4 +253,9 @@ def test_langchain_tool_error_propagation(temp_skills_dir, skill_factory):
     # Error message mentions size limit (exact format may vary)
     error_msg = str(exc_info.value)
     assert "exceed" in error_msg.lower() or "too large" in error_msg.lower()
-    assert "1000000" in error_msg or "1048576" in error_msg or "1 MB" in error_msg or "1MB" in error_msg
+    assert (
+        "1000000" in error_msg
+        or "1048576" in error_msg
+        or "1 MB" in error_msg
+        or "1MB" in error_msg
+    )

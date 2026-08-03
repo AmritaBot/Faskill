@@ -15,9 +15,9 @@ import pytest
 # Check for LangChain availability
 pytest.importorskip("langchain_core", reason="LangChain not installed")
 
-from skillkit import SkillManager
-from skillkit.core.exceptions import AsyncStateError
-from skillkit.integrations.langchain import create_langchain_tools
+from faskill import SkillContext
+from faskill.core.exceptions import AsyncStateError
+from faskill.integrations.langchain import create_langchain_tools
 
 
 class TestLangChainAsyncTools:
@@ -79,7 +79,6 @@ class TestLangChainAsyncTools:
     @pytest.mark.asyncio
     async def test_concurrent_tool_invocations(self, skill_manager_async):
         """Test concurrent async tool invocations (10+ parallel)."""
-        from langchain_core.tools import ToolException
 
         tools = create_langchain_tools(skill_manager_async)
 
@@ -119,10 +118,7 @@ class TestLangChainAsyncTools:
         # 1. Prompt-based tools (skill name only, e.g., "pdf-extractor")
         # 2. Script-based tools (skill__script format, e.g., "pdf-extractor__extract")
         # Extract base skill names from both types
-        tool_skill_names = {
-            name.split("__")[0] if "__" in name else name
-            for name in tool_names
-        }
+        tool_skill_names = {name.split("__")[0] if "__" in name else name for name in tool_names}
 
         # All tools should correspond to discovered skills
         assert tool_skill_names == skill_names
@@ -148,7 +144,7 @@ class TestLangChainAsyncStateManagement:
 
     def test_create_tools_after_sync_discover(self, skills_directory: Path):
         """Test creating tools after sync discovery."""
-        manager = SkillManager(skills_directory)
+        manager = SkillContext(skill_dirs=[skills_directory])
         manager.discover()  # Sync discovery
 
         tools = create_langchain_tools(manager)
@@ -162,7 +158,7 @@ class TestLangChainAsyncStateManagement:
 
     def test_tools_async_invoke_fails_after_sync_discover(self, skills_directory: Path):
         """Test that async tool invocation fails after sync discovery."""
-        manager = SkillManager(skills_directory)
+        manager = SkillContext(skill_dirs=[skills_directory])
         manager.discover()  # Sync discovery
 
         tools = create_langchain_tools(manager)
@@ -172,9 +168,7 @@ class TestLangChainAsyncStateManagement:
             asyncio.run(tools[0].ainvoke({"arguments": "test"}))
 
     @pytest.mark.asyncio
-    async def test_tools_sync_invoke_works_after_async_discover(
-        self, skill_manager_async
-    ):
+    async def test_tools_sync_invoke_works_after_async_discover(self, skill_manager_async):
         """Test that sync tool invocation works after async discovery."""
         tools = create_langchain_tools(skill_manager_async)
 
@@ -187,9 +181,7 @@ class TestLangChainAsyncClosureCapture:
     """Test closure capture pattern for async tools."""
 
     @pytest.mark.asyncio
-    async def test_multiple_tools_capture_correct_skill_names(
-        self, skill_manager_async
-    ):
+    async def test_multiple_tools_capture_correct_skill_names(self, skill_manager_async):
         """Test that each tool captures the correct skill name (no late binding)."""
         tools = create_langchain_tools(skill_manager_async)
 
@@ -204,24 +196,24 @@ class TestLangChainAsyncClosureCapture:
             assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_concurrent_different_tools_use_correct_skills(
-        self, skill_manager_async
-    ):
+    async def test_concurrent_different_tools_use_correct_skills(self, skill_manager_async):
         """Test concurrent invocations of different tools use correct skills."""
         tools = create_langchain_tools(skill_manager_async)
 
-        if len(tools) < 2:
-            pytest.skip("Need at least 2 skills for this test")
+        # Filter to prompt-based tools only (script tools need specific args)
+        prompt_tools = [t for t in tools if "__" not in t.name]
+        if len(prompt_tools) < 2:
+            pytest.skip("Need at least 2 prompt-based skills for this test")
 
         # Invoke different tools concurrently
         results = await asyncio.gather(
-            tools[0].ainvoke({"arguments": f"for {tools[0].name}"}),
-            tools[1].ainvoke({"arguments": f"for {tools[1].name}"}),
+            prompt_tools[0].ainvoke({"arguments": f"for {prompt_tools[0].name}"}),
+            prompt_tools[1].ainvoke({"arguments": f"for {prompt_tools[1].name}"}),
         )
 
         # Each should have processed with the correct skill
-        assert f"for {tools[0].name}" in results[0]
-        assert f"for {tools[1].name}" in results[1]
+        assert f"for {prompt_tools[0].name}" in results[0]
+        assert f"for {prompt_tools[1].name}" in results[1]
 
 
 class TestLangChainAsyncPydanticSchema:
@@ -230,7 +222,7 @@ class TestLangChainAsyncPydanticSchema:
     @pytest.mark.asyncio
     async def test_tool_input_schema_validation(self, skill_manager_async):
         """Test that tool input schema validates arguments."""
-        from skillkit.integrations.langchain import SkillInput
+        from faskill.integrations.langchain import SkillInput
 
         tools = create_langchain_tools(skill_manager_async)
         tool = tools[0]
@@ -261,11 +253,8 @@ class TestLangChainAsyncErrorHandling:
     """Test error handling in async LangChain tools."""
 
     @pytest.mark.asyncio
-    async def test_tool_ainvoke_nonexistent_skill_raises_error(
-        self, skill_manager_async
-    ):
+    async def test_tool_ainvoke_nonexistent_skill_raises_error(self, skill_manager_async):
         """Test that tool invocation raises error for nonexistent skill."""
-        from skillkit.core.exceptions import SkillNotFoundError
 
         # This test verifies error propagation, but tools are created from
         # existing skills, so we'd need to delete a skill after tool creation
@@ -281,9 +270,7 @@ class TestLangChainAsyncErrorHandling:
             assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_concurrent_invocations_one_fails_others_succeed(
-        self, skill_manager_async
-    ):
+    async def test_concurrent_invocations_one_fails_others_succeed(self, skill_manager_async):
         """Test that if one concurrent invocation fails, others still succeed."""
         tools = create_langchain_tools(skill_manager_async)
 
@@ -331,7 +318,7 @@ class TestLangChainAsyncPerformance:
 
         # Async overhead should be < 5ms
         time_diff = abs(async_time - sync_time)
-        assert time_diff < 0.005, f"Async overhead: {time_diff*1000:.2f}ms"
+        assert time_diff < 0.005, f"Async overhead: {time_diff * 1000:.2f}ms"
 
     @pytest.mark.asyncio
     async def test_concurrent_tools_faster_than_sequential(self, skill_manager_async):
@@ -377,12 +364,17 @@ class TestLangChainAsyncIntegrationScenarios:
         """Simulate an agent workflow with multiple tool calls."""
         tools = create_langchain_tools(skill_manager_async)
 
+        # Filter to prompt-based tools only (script tools need specific args)
+        prompt_tools = [t for t in tools if "__" not in t.name]
+        if len(prompt_tools) < 3:
+            pytest.skip("Need at least 3 prompt-based skills for this test")
+
         # Simulate agent making multiple tool calls
-        step1 = await tools[0].ainvoke({"arguments": "analyze this code"})
-        step2 = await tools[1 % len(tools)].ainvoke(
+        step1 = await prompt_tools[0].ainvoke({"arguments": "analyze this code"})
+        step2 = await prompt_tools[1 % len(prompt_tools)].ainvoke(
             {"arguments": f"based on {step1[:50]}"}
         )
-        step3 = await tools[2 % len(tools)].ainvoke(
+        step3 = await prompt_tools[2 % len(prompt_tools)].ainvoke(
             {"arguments": f"finalize {step2[:50]}"}
         )
 
@@ -394,21 +386,22 @@ class TestLangChainAsyncIntegrationScenarios:
         """Test multiple parallel agent workflows."""
         tools = create_langchain_tools(skill_manager_async)
 
+        # Filter to prompt-based tools only (script tools need specific args)
+        prompt_tools = [t for t in tools if "__" not in t.name]
+        if len(prompt_tools) < 2:
+            pytest.skip("Need at least 2 prompt-based skills for this test")
+
         async def agent_workflow(agent_id: int):
             """Simulate an agent workflow."""
             results = []
             for i in range(3):
-                tool = tools[i % len(tools)]
-                result = await tool.ainvoke(
-                    {"arguments": f"agent {agent_id} step {i}"}
-                )
+                tool = prompt_tools[i % len(prompt_tools)]
+                result = await tool.ainvoke({"arguments": f"agent {agent_id} step {i}"})
                 results.append(result)
             return results
 
         # Run 3 parallel agent workflows
-        workflows = await asyncio.gather(
-            agent_workflow(1), agent_workflow(2), agent_workflow(3)
-        )
+        workflows = await asyncio.gather(agent_workflow(1), agent_workflow(2), agent_workflow(3))
 
         # All workflows should complete
         assert len(workflows) == 3

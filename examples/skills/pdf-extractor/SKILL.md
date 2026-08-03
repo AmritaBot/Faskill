@@ -15,9 +15,11 @@ This skill provides tools for extracting text and metadata from PDF documents an
 ## Available Scripts
 
 ### extract.py
+
 Extracts text and metadata from PDF files.
 
 **Input**:
+
 ```json
 {
   "file_path": "/path/to/document.pdf",
@@ -26,6 +28,7 @@ Extracts text and metadata from PDF files.
 ```
 
 **Output**:
+
 ```json
 {
   "text": "Extracted text content...",
@@ -38,9 +41,11 @@ Extracts text and metadata from PDF files.
 ```
 
 ### convert.sh
+
 Converts PDF files to different formats (text, markdown, etc.).
 
 **Input**:
+
 ```json
 {
   "input_file": "/path/to/input.pdf",
@@ -49,9 +54,11 @@ Converts PDF files to different formats (text, markdown, etc.).
 ```
 
 ### parse.py
+
 Parses structured data from PDF forms and tables.
 
 **Input**:
+
 ```json
 {
   "file_path": "/path/to/form.pdf",
@@ -63,7 +70,7 @@ Parses structured data from PDF forms and tables.
 ## Usage Example
 
 ```python
-from skillkit import SkillManager
+from faskill import SkillManager
 
 manager = SkillManager()
 result = manager.execute_skill_script(

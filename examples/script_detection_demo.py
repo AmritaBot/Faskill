@@ -11,7 +11,7 @@ This example demonstrates the automatic script detection feature added in v0.3.0
 7. Graceful degradation when individual script parsing fails
 
 Prerequisites:
-    - skillkit v0.3.0+
+    - faskill v0.3.0+
     - Python 3.10+
     - Example skills in examples/skills/
 
@@ -23,20 +23,19 @@ import asyncio
 import logging
 from pathlib import Path
 
-from skillkit import SkillManager
-from skillkit.core.scripts import ScriptDetector
+from faskill import SkillContext
+from faskill.core.scripts import ScriptDetector
 
 # Configure logging to see INFO messages from script detection
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 
 async def main():
     """Demonstrate automatic script detection."""
     print("=" * 80)
-    print("skillkit v0.3.0 - Automatic Script Detection Demo (Phase 8)")
+    print("faskill v0.3.0 - Automatic Script Detection Demo (Phase 8)")
     print("=" * 80)
     print()
 
@@ -60,7 +59,7 @@ async def main():
     print()
 
     # Initialize manager
-    manager = SkillManager(project_skill_dir=examples_dir)
+    manager = SkillContext(skill_dirs=[examples_dir])
     await manager.adiscover()
 
     # Find a skill with scripts
@@ -106,14 +105,14 @@ async def main():
     # Create detector with custom settings
     detector = ScriptDetector(
         max_depth=3,  # Limit to 3 levels deep
-        max_lines_for_description=100  # Scan more lines for descriptions
+        max_lines_for_description=100,  # Scan more lines for descriptions
     )
 
     # Detect scripts in a specific skill
     skill_dir = examples_dir / "file-reference-skill"
     if skill_dir.exists():
         print(f"Scanning: {skill_dir}")
-        print(f"Max depth: 3 levels")
+        print("Max depth: 3 levels")
         print()
 
         scripts = detector.detect_scripts(skill_dir)
@@ -206,16 +205,16 @@ async def main():
     print('    """Extract text from PDF files"""')
     print()
     print("  Python (comment):")
-    print('    # Process CSV data and generate reports')
+    print("    # Process CSV data and generate reports")
     print()
     print("  Shell (comment):")
-    print('    #!/bin/bash')
-    print('    # Convert images to different formats')
+    print("    #!/bin/bash")
+    print("    # Convert images to different formats")
     print()
     print("  JavaScript (JSDoc):")
-    print('    /**')
-    print('     * Parse JSON configuration files')
-    print('     */')
+    print("    /**")
+    print("     * Parse JSON configuration files")
+    print("     */")
     print()
 
     # Example 7: Performance

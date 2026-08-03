@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""LangChain agent integration example for skillkit library.
+"""LangChain agent integration example for faskill library.
 
 This script demonstrates how to use discovered skills with LangChain agents,
 including both synchronous and asynchronous patterns.
 
 Requirements:
-    pip install skillkit[langchain]
+    pip install faskill[langchain]
     pip install langchain-openai  # or other LLM provider
 """
 
@@ -14,7 +14,7 @@ import logging
 import os
 from pathlib import Path
 
-from skillkit import SkillManager
+from faskill import SkillContext
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
@@ -23,16 +23,16 @@ logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(mes
 def main() -> None:
     """Demonstrate LangChain agent integration."""
     print("=" * 60)
-    print("skillkit: LangChain Agent Integration Example")
+    print("faskill: LangChain Agent Integration Example")
     print("=" * 60)
 
     # Check for LangChain availability
     try:
-        from skillkit.integrations.langchain import create_langchain_tools
+        from faskill.integrations.langchain import create_langchain_tools
     except ImportError as e:
         print(f"\nError: {e}")
         print("\nInstall LangChain integration with:")
-        print("  pip install skillkit[langchain]")
+        print("  pip install faskill[langchain]")
         return
 
     # Use example skills from examples/skills/ directory
@@ -41,7 +41,7 @@ def main() -> None:
 
     # Create skill manager and discover skills
     print("\n[1] Discovering skills...")
-    manager = SkillManager(skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     manager.discover()
 
     print(f"\nFound {len(manager.list_skills())} skills")
@@ -158,22 +158,22 @@ Thought: {agent_scratchpad}"""
 
 
 async def async_agent_demo() -> None:
-    """Demonstrate async LangChain agent integration with skillkit.
+    """Demonstrate async LangChain agent integration with faskill.
 
     This example shows how to use async discovery and invocation
     for improved performance in async applications.
     """
     print("\n" + "=" * 60)
-    print("skillkit: ASYNC LangChain Agent Integration Example")
+    print("faskill: ASYNC LangChain Agent Integration Example")
     print("=" * 60)
 
     # Check for LangChain availability
     try:
-        from skillkit.integrations.langchain import create_langchain_tools
+        from faskill.integrations.langchain import create_langchain_tools
     except ImportError as e:
         print(f"\nError: {e}")
         print("\nInstall LangChain integration with:")
-        print("  pip install skillkit[langchain]")
+        print("  pip install faskill[langchain]")
         return
 
     # Use example skills from examples/skills/ directory
@@ -182,7 +182,7 @@ async def async_agent_demo() -> None:
 
     # Create skill manager and discover skills ASYNCHRONOUSLY
     print("\n[1] Discovering skills asynchronously...")
-    manager = SkillManager(skills_dir)
+    manager = SkillContext(skill_dirs=[skills_dir])
     await manager.adiscover()  # Async discovery (non-blocking)
 
     print(f"\nFound {len(manager.list_skills())} skills")

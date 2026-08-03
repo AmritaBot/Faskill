@@ -15,7 +15,7 @@ Usage:
 
 import logging
 
-from skillkit.core.manager import SkillManager
+from faskill.core.manager import SkillContext
 
 # Configure logging to see discovery details
 logging.basicConfig(
@@ -38,11 +38,13 @@ def demo_priority_resolution():
     logger.info("  4. CUSTOM (./extra-skills) - Priority 5")
     logger.info("")
 
-    manager = SkillManager(
-        project_skill_dir="./examples/skills",
-        anthropic_config_dir="./.claude/skills",
-        plugin_dirs=["./examples/skills/plugin-example"],
-        additional_search_paths=["./extra-skills"],
+    manager = SkillContext(
+        skill_dirs=[
+            "./examples/skills",
+            "./.claude/skills",
+            "./examples/skills/plugin-example",
+            "./extra-skills",
+        ]
     )
 
     logger.info("Running discovery (watch for conflict warnings)...")
@@ -69,10 +71,7 @@ def demo_qualified_names():
     logger.info("via fully qualified names (plugin-name:skill-name).")
     logger.info("")
 
-    manager = SkillManager(
-        project_skill_dir="./examples/skills",
-        plugin_dirs=["./examples/skills/plugin-example"],
-    )
+    manager = SkillContext(skill_dirs=["./examples/skills", "./examples/skills/plugin-example"])
     manager.discover()
 
     logger.info("Listing skills with qualified names for conflicts:")
@@ -143,12 +142,9 @@ def demo_enhanced_logging():
     logger.info("")
 
     # Set logging to DEBUG to see all messages
-    logging.getLogger("skillkit.core.manager").setLevel(logging.DEBUG)
+    logging.getLogger("faskill.core.manager").setLevel(logging.DEBUG)
 
-    manager = SkillManager(
-        project_skill_dir="./examples/skills",
-        plugin_dirs=["./examples/skills/plugin-example"],
-    )
+    manager = SkillContext(skill_dirs=["./examples/skills", "./examples/skills/plugin-example"])
 
     logger.info("Running discovery with DEBUG logging enabled...")
     logger.info("Watch for detailed conflict messages showing:")
@@ -160,7 +156,7 @@ def demo_enhanced_logging():
     manager.discover()
 
     # Reset logging
-    logging.getLogger("skillkit.core.manager").setLevel(logging.INFO)
+    logging.getLogger("faskill.core.manager").setLevel(logging.INFO)
 
 
 def demo_conflict_resolution_order():

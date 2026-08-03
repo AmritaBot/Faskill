@@ -1,14 +1,14 @@
 #!/bin/bash
 # Convert PDF files to different formats
 #
-# This script demonstrates shell script support in skillkit.
+# This script demonstrates shell script support in faskill.
 # It reads JSON from stdin and performs format conversion.
 #
 # Environment variables available:
 # - SKILL_NAME
 # - SKILL_BASE_DIR
 # - SKILL_VERSION
-# - SKILLKIT_VERSION
+# - faskill_VERSION
 
 # Read JSON input from stdin
 read -r json_input
@@ -38,7 +38,7 @@ cat <<EOF
     "skill_name": "$SKILL_NAME",
     "skill_base_dir": "$SKILL_BASE_DIR",
     "skill_version": "$SKILL_VERSION",
-    "skillkit_version": "$SKILLKIT_VERSION"
+    "faskill_version": "$faskill_VERSION"
   }
 }
 EOF

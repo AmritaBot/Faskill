@@ -1,1 +1,1 @@
-"""Test suite for skillkit library."""
+"""Test suite for faskill library."""
