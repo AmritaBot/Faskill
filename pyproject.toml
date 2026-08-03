@@ -71,8 +71,9 @@ addopts = [
     "--strict-config",
     "--cov=src/faskill",
     "--cov-report=term-missing",
-    "--cov-report=html",
+    "--cov-report=xml",
     "--cov-fail-under=70",
+    "--junitxml=test-results.xml"
 ]
 
 [tool.coverage.run]

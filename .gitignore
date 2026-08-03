@@ -219,3 +219,6 @@ __marimo__/
 .claude/commands/
 .vscode/
 specs/
+
+# Tests
+/test-results.xml
