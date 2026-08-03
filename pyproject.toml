@@ -137,4 +137,14 @@ dev = [
 typeCheckingMode = "standard"
 venvPath = "."
 venv = ".venv"
-exclude = ["examples"]
+exclude = [
+    "examples",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    ".venv",
+    "dist",
+]
+
+[tool.uv]
+package = true
