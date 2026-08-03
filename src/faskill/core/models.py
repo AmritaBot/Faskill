@@ -289,7 +289,7 @@ class SkillMetadata:
     name: str
     description: str
     skill_path: Path
-    allowed_tools: tuple[str, ...] = field(default_factory=tuple)
+    allowed_tools: tuple[str, ...] | None = None
     version: str | None = None
 
     def __post_init__(self) -> None:

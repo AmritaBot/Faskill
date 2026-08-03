@@ -36,10 +36,10 @@ def test_skill_metadata_creation(fixtures_dir):
 
 # T037: test_skill_metadata_allowed_tools_optional
 def test_skill_metadata_allowed_tools_optional(fixtures_dir):
-    """Validate allowed_tools field is optional and defaults to empty tuple.
+    """Validate allowed_tools field is optional and defaults to None.
 
     Tests that SkillMetadata can be instantiated without the allowed_tools
-    field and that it defaults to an empty tuple.
+    field and that it defaults to None.
     """
     skill_path = fixtures_dir / "valid-basic" / "SKILL.md"
 
@@ -49,8 +49,7 @@ def test_skill_metadata_allowed_tools_optional(fixtures_dir):
         skill_path=skill_path,
     )
 
-    assert metadata.allowed_tools == ()
-    assert isinstance(metadata.allowed_tools, tuple)
+    assert metadata.allowed_tools is None
 
 
 # T038: test_skill_creation_with_metadata

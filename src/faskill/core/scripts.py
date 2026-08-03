@@ -745,7 +745,7 @@ class ScriptExecutor:
 
     def __init__(
         self,
-        timeout: int = 30,
+        timeout: float | int = 30,
         max_output_size: int = 10_000_000,
         use_cache: bool = False,
         runner: "Runner | None" = None,

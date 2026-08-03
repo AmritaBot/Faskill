@@ -430,7 +430,7 @@ print(f"SKILL_VERSION={os.environ.get('SKILL_VERSION', 'MISSING')}")
             name="test-skill",
             description="Test skill",
             skill_path=tmp_path / "SKILL.md",
-            allowed_tools=["Bash", "Read"],
+            allowed_tools=("Bash", "Read"),
         )
 
         executor = ScriptExecutor(timeout=5)

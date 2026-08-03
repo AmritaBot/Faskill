@@ -1,6 +1,7 @@
 """Tests for skill discovery functionality."""
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -77,7 +78,7 @@ def test_discover_unicode_content(isolated_manager: SkillContext, sample_skills:
 def test_discover_duplicate_skill_names_logs_warning(
     isolated_manager: SkillContext,
     temp_skills_dir: Path,
-    skill_factory: callable,
+    skill_factory: "Callable[..., Path]",
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that WARNING is logged for duplicate skill names."""
@@ -113,7 +114,7 @@ Content for duplicate.
 
 
 def test_discover_skips_invalid_skills_gracefully(
-    isolated_manager: SkillContext, temp_skills_dir: Path, skill_factory: callable
+    isolated_manager: SkillContext, temp_skills_dir: Path, skill_factory: "Callable[..., Path]"
 ) -> None:
     """Test that discovery continues after encountering invalid skill."""
     # Create one valid and one invalid skill

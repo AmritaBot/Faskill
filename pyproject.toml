@@ -137,3 +137,4 @@ dev = [
 typeCheckingMode = "standard"
 venvPath = "."
 venv = ".venv"
+exclude = ["examples"]

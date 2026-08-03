@@ -53,7 +53,7 @@ class Runner(ABC):
         arguments_json: str,
         env: Dict[str, str],
         cwd: Path,
-        timeout: int,
+        timeout: float | int,
     ) -> tuple[int, str, str, str | None, int | None]:
         """Execute a script.
 
@@ -96,7 +96,7 @@ class HostRunner(Runner):
         arguments_json: str,
         env: Dict[str, str],
         cwd: Path,
-        timeout: int,
+        timeout: float | int,
     ) -> tuple[int, str, str, str | None, int | None]:
         """Execute a script via ``subprocess.run`` on the host.
 
