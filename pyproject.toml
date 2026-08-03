@@ -31,11 +31,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = [
-    "PyYAML>=6.0",
-    "aiofiles>=23.0",
-    "aiologic>=0.17.1",
-]
+dependencies = ["PyYAML>=6.0", "aiofiles>=23.0", "aiologic>=0.17.1"]
 
 [project.optional-dependencies]
 langchain = ["langchain-core>=0.1.0", "pydantic>=2.0"]
@@ -68,7 +64,7 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=xml",
     "--cov-fail-under=70",
-    "--junitxml=test-results.xml"
+    "--junitxml=test-results.xml",
 ]
 
 [tool.coverage.run]
@@ -104,11 +100,11 @@ select = [
     "SIM", # flake8-simplify
 ]
 ignore = [
-    "E501",  # line too long (handled by formatter)
-    "B008",  # do not perform function calls in argument defaults
-    "E402",  # module level import not at top of file
-    "UP006", # Use X instead of typing.X for annotations (Python 3.9 compatibility)
-    "UP035", # typing.X is deprecated (Python 3.9 compatibility)
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "E402",   # module level import not at top of file
+    "UP006",  # Use X instead of typing.X for annotations (Python 3.9 compatibility)
+    "UP035",  # typing.X is deprecated (Python 3.9 compatibility)
     "RUF036", # None at the end, preview.
 ]
 

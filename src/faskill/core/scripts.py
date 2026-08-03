@@ -38,12 +38,12 @@ import json
 import logging
 import os
 import shutil
-import signal as signal_module
-import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
+
+from faskill.core.runner import HostRunner, Runner
 
 if TYPE_CHECKING:
     from faskill.core.models import SkillMetadata
@@ -756,6 +756,7 @@ class ScriptExecutor:
         timeout: int = 30,
         max_output_size: int = 10_000_000,
         use_cache: bool = False,
+        runner: "Runner | None" = None,
     ):
         """Initialize script executor.
 
@@ -763,10 +764,14 @@ class ScriptExecutor:
             timeout: Maximum execution time in seconds (default: 30)
             max_output_size: Maximum output size in bytes (default: 10MB)
             use_cache: Enable execution result caching (default: False)
+            runner: Script execution backend (default: ``HostRunner()``).
+                Use a custom ``Runner`` subclass for sandboxed execution.
         """
+
         self.timeout = timeout
         self.max_output_size = max_output_size
         self.use_cache = use_cache
+        self._runner: Runner = runner if runner is not None else HostRunner()
 
     def _validate_script_path(self, script_path: Path, skill_base_dir: Path) -> Path:
         """Validate script path and prevent path traversal attacks.
@@ -1000,7 +1005,11 @@ class ScriptExecutor:
         env: ScriptEnvironment,
         skill_base_dir: Path,
     ) -> tuple[int, str, str, str | None, int | None]:
-        """Execute script as subprocess.
+        """Execute script via the configured Runner backend.
+
+        Delegates to ``self._runner.run()`` so the execution backend
+        (host, Docker, etc.) can be swapped without changing validation
+        or output-handling logic.
 
         Args:
             interpreter: Interpreter command (e.g., 'python3')
@@ -1011,56 +1020,15 @@ class ScriptExecutor:
 
         Returns:
             Tuple of (exit_code, stdout, stderr, signal_name, signal_number)
-
-        Security:
-            - Uses shell=False (command injection prevention)
-            - Uses list-based arguments (no shell interpretation)
-            - Enforces timeout
         """
-        try:
-            result = subprocess.run(
-                [interpreter, str(script_path)],
-                input=arguments_json,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout,
-                cwd=str(skill_base_dir),
-                shell=False,  # CRITICAL: Never use shell=True
-                check=False,
-                env=env,
-            )
-
-            # Detect signal-based termination (Unix only)
-            signal_name = None
-            signal_number = None
-
-            if result.returncode < 0:
-                signal_number = -result.returncode
-                try:
-                    signal_name = signal_module.Signals(signal_number).name
-                except ValueError:
-                    signal_name = f"UNKNOWN_SIGNAL_{signal_number}"
-
-            return (result.returncode, result.stdout, result.stderr, signal_name, signal_number)
-
-        except subprocess.TimeoutExpired as e:
-            # Log timeout warning
-            logger.warning(
-                f"Script execution timed out after {self.timeout}s - "
-                f"script={script_path.name}, timeout={self.timeout}s"
-            )
-
-            # Return timeout indication
-            stdout = e.stdout.decode("utf-8", errors="replace") if e.stdout else ""
-            stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else ""
-
-            return (
-                124,  # Conventional timeout exit code
-                stdout,
-                stderr + "\nTimeout",
-                None,
-                None,
-            )
+        return self._runner.run(
+            interpreter=interpreter,
+            script_path=script_path,
+            arguments_json=arguments_json,
+            env=env,
+            cwd=skill_base_dir,
+            timeout=self.timeout,
+        )
 
     def _handle_output_truncation(self, stdout: str, stderr: str) -> tuple[str, str, bool, bool]:
         """Truncate output if it exceeds size limits.

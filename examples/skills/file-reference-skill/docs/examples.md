@@ -14,10 +14,7 @@ manager = SkillManager("./examples/skills")
 manager.discover()
 
 # Invoke skill
-result = manager.invoke_skill(
-    "file-reference-skill",
-    "data/input.csv data/output.csv"
-)
+result = manager.invoke_skill("file-reference-skill", "data/input.csv data/output.csv")
 
 print(result)
 ```
@@ -35,10 +32,7 @@ skill = manager.get_skill("file-reference-skill")
 base_dir = skill.base_directory
 
 # Resolve script path securely
-processor_path = FilePathResolver.resolve_path(
-    base_dir,
-    "scripts/data_processor.py"
-)
+processor_path = FilePathResolver.resolve_path(base_dir, "scripts/data_processor.py")
 
 # Read script content
 with open(processor_path) as f:
@@ -57,10 +51,7 @@ import yaml
 from faskill.core.path_resolver import FilePathResolver
 
 # Resolve config template path
-config_path = FilePathResolver.resolve_path(
-    base_dir,
-    "templates/config.yaml"
-)
+config_path = FilePathResolver.resolve_path(base_dir, "templates/config.yaml")
 
 # Load configuration
 with open(config_path) as f:
@@ -79,10 +70,7 @@ from faskill.core.exceptions import PathSecurityError
 
 try:
     # Attempt path traversal (will be blocked)
-    malicious_path = FilePathResolver.resolve_path(
-        base_dir,
-        "../../../etc/passwd"
-    )
+    malicious_path = FilePathResolver.resolve_path(base_dir, "../../../etc/passwd")
 except PathSecurityError as e:
     print(f"Security violation blocked: {e}")
     # Expected output:
@@ -99,13 +87,11 @@ import subprocess
 from faskill.core.path_resolver import FilePathResolver
 
 # Resolve validator script
-validator_path = FilePathResolver.resolve_path(
-    base_dir,
-    "scripts/validator.py"
-)
+validator_path = FilePathResolver.resolve_path(base_dir, "scripts/validator.py")
 
 # Import and use validator
 import sys
+
 sys.path.insert(0, str(validator_path.parent))
 from validator import validate_csv_format
 
@@ -124,10 +110,7 @@ from datetime import datetime
 from faskill.core.path_resolver import FilePathResolver
 
 # Resolve report template
-template_path = FilePathResolver.resolve_path(
-    base_dir,
-    "templates/report.md"
-)
+template_path = FilePathResolver.resolve_path(base_dir, "templates/report.md")
 
 # Load template
 with open(template_path) as f:
@@ -135,23 +118,25 @@ with open(template_path) as f:
 
 # Fill template with data
 template = Template(template_content)
-report = template.safe_substitute({
-    'timestamp': datetime.now().isoformat(),
-    'input_file': 'data/input.csv',
-    'input_size': '1234',
-    'format': 'CSV',
-    'encoding': 'UTF-8',
-    'start_time': '10:00:00',
-    'end_time': '10:00:05',
-    'duration': '5',
-    'status': 'SUCCESS',
-    'output_file': 'data/output.csv',
-    'output_size': '1234',
-    'record_count': '100',
-    'error_count': '0',
-    'validation_results': 'All checks passed',
-    'processing_log': 'Processing completed successfully'
-})
+report = template.safe_substitute(
+    {
+        "timestamp": datetime.now().isoformat(),
+        "input_file": "data/input.csv",
+        "input_size": "1234",
+        "format": "CSV",
+        "encoding": "UTF-8",
+        "start_time": "10:00:00",
+        "end_time": "10:00:05",
+        "duration": "5",
+        "status": "SUCCESS",
+        "output_file": "data/output.csv",
+        "output_size": "1234",
+        "record_count": "100",
+        "error_count": "0",
+        "validation_results": "All checks passed",
+        "processing_log": "Processing completed successfully",
+    }
+)
 
 print(report)
 ```
@@ -165,17 +150,10 @@ import subprocess
 from faskill.core.path_resolver import FilePathResolver
 
 # Resolve shell script
-helper_path = FilePathResolver.resolve_path(
-    base_dir,
-    "scripts/helper.sh"
-)
+helper_path = FilePathResolver.resolve_path(base_dir, "scripts/helper.sh")
 
 # Execute script
-result = subprocess.run(
-    ['bash', str(helper_path), 'check'],
-    capture_output=True,
-    text=True
-)
+result = subprocess.run(["bash", str(helper_path), "check"], capture_output=True, text=True)
 
 print(result.stdout)
 ```
@@ -192,7 +170,7 @@ file_paths = [
     "scripts/data_processor.py",
     "scripts/validator.py",
     "templates/config.yaml",
-    "docs/usage.md"
+    "docs/usage.md",
 ]
 
 # Resolve all paths securely
@@ -217,6 +195,7 @@ from pathlib import Path
 from faskill.core.path_resolver import FilePathResolver
 from faskill.core.exceptions import PathSecurityError
 
+
 def safe_load_supporting_file(base_dir: Path, rel_path: str) -> str:
     """Safely load supporting file with comprehensive error handling."""
     try:
@@ -224,7 +203,7 @@ def safe_load_supporting_file(base_dir: Path, rel_path: str) -> str:
         abs_path = FilePathResolver.resolve_path(base_dir, rel_path)
 
         # Read file content
-        with open(abs_path, 'r', encoding='utf-8') as f:
+        with open(abs_path, "r", encoding="utf-8") as f:
             return f.read()
 
     except PathSecurityError as e:
@@ -242,6 +221,7 @@ def safe_load_supporting_file(base_dir: Path, rel_path: str) -> str:
     except Exception as e:
         print(f"Unexpected error loading {rel_path}: {e}")
         raise
+
 
 # Usage
 try:

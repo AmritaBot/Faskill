@@ -155,10 +155,10 @@ from faskill import create_context
 
 ctx = create_context(
     skill_dirs=["./skills", "./plugins"],  # Directory list; directories with
-                                           # .claude-plugin/plugin.json are
-                                           # detected as plugins
-    default_script_timeout=30,             # seconds (1-600)
-    max_cache_size=100,                    # LRU cache entries
+    # .claude-plugin/plugin.json are
+    # detected as plugins
+    default_script_timeout=30,  # seconds (1-600)
+    max_cache_size=100,  # LRU cache entries
 )
 ```
 

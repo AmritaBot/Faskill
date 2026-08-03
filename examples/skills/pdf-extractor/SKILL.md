@@ -76,7 +76,7 @@ manager = SkillManager()
 result = manager.execute_skill_script(
     skill_name="pdf-extractor",
     script_name="extract",
-    arguments={"file_path": "document.pdf", "pages": "all"}
+    arguments={"file_path": "document.pdf", "pages": "all"},
 )
 
 if result.success:

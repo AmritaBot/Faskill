@@ -4,7 +4,6 @@ This module validates the parser's ability to extract and validate YAML frontmat
 from SKILL.md files, including error handling for malformed inputs.
 """
 
-import os
 import pytest
 
 from faskill.core.exceptions import (

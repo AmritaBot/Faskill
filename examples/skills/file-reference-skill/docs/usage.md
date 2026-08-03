@@ -33,10 +33,7 @@ from faskill.core.path_resolver import FilePathResolver
 base_dir = Path("/path/to/skills/file-reference-skill")
 
 # Resolve paths securely
-processor_path = FilePathResolver.resolve_path(
-    base_dir,
-    "scripts/data_processor.py"
-)
+processor_path = FilePathResolver.resolve_path(base_dir, "scripts/data_processor.py")
 
 # Read file content
 with open(processor_path) as f:
@@ -96,10 +93,7 @@ FilePathResolver.resolve_path(base_dir, "malicious_link")
    manager = SkillManager()
    manager.discover()
 
-   result = manager.invoke_skill(
-       "file-reference-skill",
-       "input_data.csv output_data.csv"
-   )
+   result = manager.invoke_skill("file-reference-skill", "input_data.csv output_data.csv")
    ```
 
 2. **Skill Processing**

@@ -163,8 +163,8 @@ from faskill import create_context
 
 ctx = create_context(
     skill_dirs=["./skills", "./plugins"],
-    default_script_timeout=30,   # seconds
-    max_cache_size=100,          # LRU entries
+    default_script_timeout=30,  # seconds
+    max_cache_size=100,  # LRU entries
 )
 ctx.discover()
 ```

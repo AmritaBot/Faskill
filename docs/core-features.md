@@ -31,7 +31,7 @@ ctx.discover()
 ```python
 ctx = create_context()
 ctx.add_source("./my-skills")
-ctx.add_source("./plugins/pdf-tools")   # auto-detected as PLUGIN if manifest exists
+ctx.add_source("./plugins/pdf-tools")  # auto-detected as PLUGIN if manifest exists
 ctx.discover()
 ```
 
@@ -108,13 +108,14 @@ Scripts receive arguments as JSON via stdin and output results to stdout. All pa
 ```python
 #!/usr/bin/env python3
 """Extract data from PDF file."""
+
 import sys, json
 
 args = json.load(sys.stdin)
 
 # Use lowercase parameter names (normalized automatically)
-file_path = args.get('file_path', 'document.pdf')
-page_range = args.get('page_range', 'all')
+file_path = args.get("file_path", "document.pdf")
+page_range = args.get("page_range", "all")
 
 result = {"extracted_text": "..."}
 print(json.dumps(result))
@@ -155,16 +156,16 @@ except PathSecurityError:
 ### Execution Result Properties
 
 ```python
-result.exit_code          # 0 = success
-result.success            # True if exit_code == 0
-result.stdout             # Captured stdout
-result.stderr             # Captured stderr
+result.exit_code  # 0 = success
+result.success  # True if exit_code == 0
+result.stdout  # Captured stdout
+result.stderr  # Captured stderr
 result.execution_time_ms  # Duration in milliseconds
-result.timeout            # True if killed by timeout
-result.signaled           # True if terminated by signal
-result.signal             # Signal name (e.g. SIGSEGV)
-result.stdout_truncated   # True if output exceeded 10MB
-result.stderr_truncated   # True if stderr exceeded 10MB
+result.timeout  # True if killed by timeout
+result.signaled  # True if terminated by signal
+result.signal  # Signal name (e.g. SIGSEGV)
+result.stdout_truncated  # True if output exceeded 10MB
+result.stderr_truncated  # True if stderr exceeded 10MB
 ```
 
 ---
@@ -193,7 +194,7 @@ print(f"Hits: {stats.hits}, Misses: {stats.misses}")
 
 ```python
 ctx.clear_cache("code-reviewer")  # Clear one skill
-ctx.clear_cache()                 # Clear all
+ctx.clear_cache()  # Clear all
 ```
 
 ---
@@ -235,12 +236,14 @@ print(f"Tools: {metadata.allowed_tools}")
 import asyncio
 from faskill import create_context
 
+
 async def main():
     ctx = create_context(skill_dirs=["./skills"])
     await ctx.adiscover()
 
     result = await ctx.ainvoke_skill("code-reviewer", "Review main.py")
     print(result)
+
 
 asyncio.run(main())
 ```
@@ -253,13 +256,14 @@ asyncio.run(main())
 
 ```python
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 ```
 
 ### Module-specific logging
 
 ```python
-logging.getLogger('faskill.core.discovery').setLevel(logging.DEBUG)
+logging.getLogger("faskill.core.discovery").setLevel(logging.DEBUG)
 ```
 
 ### Common issues

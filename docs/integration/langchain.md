@@ -49,6 +49,7 @@ from faskill.integrations.langchain import create_langchain_tools
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
+
 async def main():
     ctx = create_context(skill_dirs=["./skills"])
     await ctx.adiscover()
@@ -59,8 +60,13 @@ async def main():
 
     agent = create_agent(llm, tools, system_prompt=prompt)
     result = await agent.ainvoke(
-        {"messages": [{"role": "user", "content": "What are common architectural patterns in Python?"}]}
+        {
+            "messages": [
+                {"role": "user", "content": "What are common architectural patterns in Python?"}
+            ]
+        }
     )
+
 
 asyncio.run(main())
 ```
@@ -93,9 +99,9 @@ tools = create_langchain_tools(ctx)
 
 # Step 2: When the agent decides to use a particular skill, load scripts on demand
 skill = ctx.load_skill("pdf-extractor")
-if skill.scripts:                        # triggers script detection NOW
+if skill.scripts:  # triggers script detection NOW
     script_tools = create_script_tools(skill, ctx)
-    tools.extend(script_tools)           # "pdf-extractor__extract", etc.
+    tools.extend(script_tools)  # "pdf-extractor__extract", etc.
 ```
 
 ### How It Works
@@ -179,6 +185,7 @@ import asyncio
 from faskill import create_context
 from faskill.integrations.langchain import create_langchain_tools, create_script_tools
 
+
 async def main():
     ctx = create_context(skill_dirs=["./skills"])
     await ctx.adiscover()
@@ -192,6 +199,7 @@ async def main():
         tools += create_script_tools(skill, ctx)
 
     # Use with async LangChain agent...
+
 
 asyncio.run(main())
 ```

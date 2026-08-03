@@ -155,10 +155,10 @@ from faskill import create_context
 
 ctx = create_context(
     skill_dirs=["./skills", "./plugins"],  # 目录列表；包含
-                                           # .claude-plugin/plugin.json
-                                           # 的目录被视为插件
-    default_script_timeout=30,             # 秒 (1-600)
-    max_cache_size=100,                    # LRU 缓存条目数
+    # .claude-plugin/plugin.json
+    # 的目录被视为插件
+    default_script_timeout=30,  # 秒 (1-600)
+    max_cache_size=100,  # LRU 缓存条目数
 )
 ```
 

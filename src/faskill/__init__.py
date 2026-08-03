@@ -38,6 +38,7 @@ from faskill.core.exceptions import (
 from faskill.core.manager import SkillContext
 from faskill.core.models import Skill, SkillMetadata
 from faskill.core.path_resolver import FilePathResolver
+from faskill.core.runner import HostRunner, Runner
 from faskill.core.scripts import ScriptExecutionResult, ScriptMetadata
 
 __version__ = importlib.metadata.version("faskill")
@@ -83,6 +84,9 @@ __all__ = [
     # Script classes (v0.3+)
     "ScriptMetadata",
     "ScriptExecutionResult",
+    # Runner abstraction (v0.4+)
+    "Runner",
+    "HostRunner",
     # Base exceptions
     "SkillsUseError",
     "SkillParsingError",

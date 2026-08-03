@@ -53,6 +53,7 @@ def test_langchain_import_with_extras():
         # If langchain is not installed, skip test
         pytest.skip(f"LangChain not installed: {e}")
 
+
 def test_package_version_metadata():
     """Test that package version metadata is correct."""
     import faskill

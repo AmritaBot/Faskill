@@ -30,6 +30,7 @@ from faskill.core.processors import (
     normalize_arguments,
     process_skill_content,
 )
+from faskill.core.runner import HostRunner, Runner
 
 __all__ = [
     # Core classes
@@ -48,6 +49,9 @@ __all__ = [
     "CompositeProcessor",
     "normalize_arguments",
     "process_skill_content",
+    # Runner
+    "Runner",
+    "HostRunner",
     # Exceptions
     "SkillsUseError",
     "SkillParsingError",
