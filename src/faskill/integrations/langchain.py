@@ -78,9 +78,10 @@ class ScriptInput(BaseModel):
 def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
     """Create LangChain StructuredTool objects from discovered skills with async support.
 
-    Creates tools for both prompt-based skills and script-based skills:
-    - Prompt-based tools: Named "{skill_name}" (e.g., "csv-parser")
-    - Script-based tools: Named "{skill_name}__{script_name}" (e.g., "pdf-extractor__extract")
+    Creates one prompt-based tool per discovered skill.  Script tools are **not**
+    auto-created — use :func:`create_script_tools` explicitly when the agent
+    decides to use a particular skill's scripts.  This follows the progressive
+    disclosure pattern (L1 metadata → L2 content → L3 scripts on demand).
 
     Tools support both sync and async invocation patterns:
     - Sync agents: Use tool.invoke() → calls func parameter (sync)
@@ -95,8 +96,9 @@ def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
         manager: SkillContext instance with discovered skills
 
     Returns:
-        List of StructuredTool objects ready for agent use (sync and async)
-        Includes both prompt-based and script-based tools (v0.3+)
+        List of StructuredTool objects ready for agent use (sync and async).
+        Only prompt-based tools are created; script tools must be created
+        separately via create_script_tools().
 
     Raises:
         Various faskill exceptions during tool invocation (bubbled up)
@@ -110,7 +112,7 @@ def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
 
         >>> tools = create_langchain_tools(manager)
         >>> print(f"Created {len(tools)} tools")
-        Created 5 tools (3 prompt-based + 2 script-based)
+        Created 5 tools
 
         >>> # Use with sync LangChain agent
         >>> from langchain.agents import create_react_agent
@@ -129,6 +131,13 @@ def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
         >>> # Use with async LangChain agent
         >>> from langchain.agents import AgentExecutor
         >>> result = await executor.ainvoke({"input": "Use csv-parser skill"})
+
+    Progressive disclosure with scripts:
+        >>> # When the agent picks a skill that has scripts, discover them on demand:
+        >>> skill = manager.load_skill("pdf-extractor")
+        >>> if skill.scripts:
+        ...     script_tools = create_script_tools(skill, manager)
+        ...     tools.extend(script_tools)
     """
     tools: List[StructuredTool] = []
 
@@ -203,17 +212,6 @@ def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
         )
 
         tools.append(tool)
-
-        # v0.3+: Also create script-based tools for this skill
-        # Get the full Skill object (not just metadata) to access scripts property
-        try:
-            skill = manager.load_skill(skill_metadata.name)
-            script_tools = create_script_tools(skill, manager)
-            tools.extend(script_tools)
-        except Exception:
-            # If script detection fails, continue without script tools
-            # This ensures backward compatibility and graceful degradation
-            pass
 
     return tools
 

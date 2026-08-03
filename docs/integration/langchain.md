@@ -69,30 +69,41 @@ asyncio.run(main())
 
 ## Script Tool Integration
 
-Scripts are automatically exposed as separate LangChain tools when you use `create_langchain_tools()`:
+faskill follows **progressive disclosure** for context efficiency:
+
+| Level | Content | When loaded |
+|-------|---------|-------------|
+| **L1** | Metadata (name, description) | `discover()` / `list_skills()` |
+| **L2** | Full skill body | Lazily on first `invoke_skill()` |
+| **L3** | Scripts | Explicitly via `create_script_tools()` on demand |
+
+`create_langchain_tools()` creates **only prompt-based tools** — script tools are
+**not** auto-created.  To expose scripts to an agent, call `create_script_tools()`
+after the agent has chosen a skill:
 
 ```python
 from faskill import create_context
-from faskill.integrations.langchain import create_langchain_tools
+from faskill.integrations.langchain import create_langchain_tools, create_script_tools
 
 ctx = create_context(skill_dirs=["./skills"])
 ctx.discover()
 
-# Each script becomes a separate tool: "{skill-name}__{script-name}"
+# Step 1: Create prompt-based tools (L1 metadata only — no script scanning)
 tools = create_langchain_tools(ctx)
 
-# Example tool names:
-# - "pdf-extractor__extract"
-# - "pdf-extractor__convert"
-# - "pdf-extractor__parse"
+# Step 2: When the agent decides to use a particular skill, load scripts on demand
+skill = ctx.load_skill("pdf-extractor")
+if skill.scripts:                        # triggers script detection NOW
+    script_tools = create_script_tools(skill, ctx)
+    tools.extend(script_tools)           # "pdf-extractor__extract", etc.
 ```
 
 ### How It Works
 
-1. **Automatic Detection**: During `discover()`, faskill recursively scans for scripts in skill directories
-2. **Tool Creation**: Each script is exposed as a separate `StructuredTool` with its own name and description
+1. **On-Demand Detection**: Scripts are only detected when `skill.scripts` is accessed
+2. **Explicit Tool Creation**: Use `create_script_tools()` to convert scripts into LangChain tools
 3. **Agent Access**: LangChain agents can invoke scripts like any other tool
-4. **Parameter Handling**: LLM-generated parameters are automatically normalized to lowercase before execution
+4. **Progressive Disclosure**: Saves token overhead by avoiding up-front scanning of all skill directories
 
 ---
 
@@ -161,19 +172,24 @@ agent = create_agent(llm, tools, system_prompt="You are a helpful assistant.")
 result = agent.invoke({"messages": [{"role": "user", "content": "Review my code"}]})
 ```
 
-### Example 2: Async Agent with Script Tools
+### Example 2: Async Agent with Progressive Script Disclosure
 
 ```python
 import asyncio
 from faskill import create_context
-from faskill.integrations.langchain import create_langchain_tools
+from faskill.integrations.langchain import create_langchain_tools, create_script_tools
 
 async def main():
     ctx = create_context(skill_dirs=["./skills"])
     await ctx.adiscover()
 
+    # Only prompt tools at first (progressive disclosure)
     tools = create_langchain_tools(ctx)
-    # Tools now include both skill invocation and script execution tools
+
+    # Load scripts on demand for the skill the agent needs
+    skill = ctx.load_skill("pdf-extractor")
+    if skill.scripts:
+        tools += create_script_tools(skill, ctx)
 
     # Use with async LangChain agent...
 

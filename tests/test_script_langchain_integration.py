@@ -154,9 +154,12 @@ def test_script_tool_invocation_failure(mock_skill_with_scripts, mock_manager):
     assert "Error: File not found" in str(exc_info.value)
 
 
-def test_create_langchain_tools_includes_scripts():
-    """Test create_langchain_tools includes both prompt and script tools."""
-    from faskill.core.scripts import ScriptMetadata
+def test_create_langchain_tools_prompt_only():
+    """Test create_langchain_tools creates only prompt-based tools (progressive disclosure).
+
+    Script tools are NOT auto-created — they must be created explicitly via
+    create_script_tools() when needed, following the progressive disclosure pattern.
+    """
     from faskill.integrations.langchain import create_langchain_tools
 
     # Create mock manager with a skill that has scripts
@@ -168,44 +171,16 @@ def test_create_langchain_tools_includes_scripts():
     skill_metadata.description = "PDF processing skill"
     manager.list_skills.return_value = [skill_metadata]
 
-    # Mock load_skill to return Skill with scripts
-    script = ScriptMetadata(
-        name="extract",
-        path=Path("scripts/extract.py"),
-        script_type="python",
-        description="Extract text from PDF",
-    )
-
-    skill = Mock()
-    skill.metadata = skill_metadata
-    skill.scripts = [script]
-    manager.load_skill.return_value = skill
-
-    # Mock execute_skill_script
-    from faskill.core.scripts import ScriptExecutionResult
-
-    result = ScriptExecutionResult(
-        stdout="Success",
-        stderr="",
-        exit_code=0,
-        execution_time_ms=10.0,
-        script_path=Path("/tmp/test.py"),
-        signal=None,
-        signal_number=None,
-        stdout_truncated=False,
-        stderr_truncated=False,
-    )
-    manager.execute_skill_script.return_value = result
-
-    # Create tools
+    # Create tools — should only create 1 prompt tool, NOT script tools
     tools = create_langchain_tools(manager)
 
-    # Should have 2 tools: 1 prompt-based + 1 script-based
-    assert len(tools) == 2
+    # Only prompt-based tool, no script tools auto-created
+    assert len(tools) == 1
+    assert tools[0].name == "pdf-extractor"
+    assert tools[0].description == "PDF processing skill"
 
-    tool_names = [tool.name for tool in tools]
-    assert "pdf-extractor" in tool_names  # Prompt-based tool
-    assert "pdf-extractor__extract" in tool_names  # Script-based tool
+    # load_skill should NOT have been called (scripts not eagerly loaded)
+    manager.load_skill.assert_not_called()
 
 
 def test_script_tool_with_empty_description(mock_manager):
