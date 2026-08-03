@@ -120,13 +120,4 @@ class FilePathResolver:
             raise PathSecurityError(error_msg)
 
         # Log successful resolution (debug level)
-        logger.debug(
-            "Path resolved successfully",
-            extra={
-                "base_directory": str(base_dir_resolved),
-                "requested_path": relative_path,
-                "resolved_path": str(requested_path),
-            },
-        )
-
         return requested_path

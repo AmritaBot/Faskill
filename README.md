@@ -1,7 +1,8 @@
 # faskill
 
 > **Fork of [maxvaega/skillkit](https://github.com/maxvaega/skillkit)**  
-> Rebranded and maintained by [AmritaConstant](https://github.com/AmritaBot).
+> Extensively refactored with bug fixes, security hardening, and new abstractions.  
+> Maintained by [AmritaConstant](https://github.com/AmritaBot).
 
 <div align="center">
 
@@ -9,8 +10,6 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI](https://img.shields.io/pypi/v/faskill)](https://pypi.org/project/faskill/)
 [![GitHub release](https://img.shields.io/github/v/release/AmritaBot/faskill)](https://github.com/AmritaBot/faskill/releases)
-[![Stars](https://img.shields.io/github/stars/AmritaBot/faskill)](https://github.com/AmritaBot/faskill/stargazers)
-
 </div>
 
 **faskill** is a Python library that brings Anthropic's Agent Skills to any LLM-powered agent. It discovers, loads, and invokes packaged expertise — defined in standard SKILL.md files — with progressive disclosure for token efficiency.
@@ -21,9 +20,28 @@
 - **Framework-agnostic** — use standalone or with LangChain (more integrations planned)
 - **Model-agnostic** — works with any LLM
 - **Multi-source discovery** — custom directories, plugins with priority-based conflict resolution
-- **Progressive disclosure** — metadata-first loading, 80% memory reduction, LRU caching
-- **Script execution** — Python, Shell, JavaScript, Ruby, Perl with security sandboxing
+- **Progressive disclosure** — metadata-first loading, 80% memory reduction, LRU caching; scripts loaded on demand
+- **Script execution** — Python, Shell, JavaScript, Ruby, Perl with security validation and timeout enforcement
+- **Pluggable runner** — `Runner` abstraction with `HostRunner` default; swap in Docker, Firecracker, etc.
 - **Plugin ecosystem** — supports plugin manifests (`.claude-plugin/plugin.json`) with namespaced skill access
+- **Comprehensive error hierarchy** — 20+ typed exceptions for precise error handling
+
+---
+
+## Notable Improvements Over Upstream (skillkit)
+
+This fork contains significant refactoring and bug fixes beyond the original:
+
+| Area         | Improvement                                                                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bug fix**  | `PRIORITY_CUSTOM` no longer decrements — ≥5 sources won't trigger `ValueError: Priority must be positive`                                                 |
+| **Bug fix**  | `create_langchain_tools()` no longer eagerly loads all scripts — respects progressive disclosure (L1→L2→L3)                                               |
+| **New**      | `InvalidSkillNameError` — names with spaces are rejected (bypass with `NO_FAIL_ON_SPACE=1`)                                                               |
+| **New**      | `Runner` abstraction — `HostRunner` (default, warns once about bare host security) with swappable backends                                                |
+| **New**      | `ArgumentSerializationError` / `ArgumentSizeError` / `ToolIDValidationError` — fine-grained script errors                                                 |
+| **New**      | `ConfigurationError` / `AsyncStateError` / `PluginError` — better error reporting                                                                         |
+| **Refactor** | `SkillManager` → `SkillContext` with `create_context()` factory; modular architecture (discovery, parser, registry, invoker, processors, scripts, runner) |
+| **Refactor** | Complete test suite (425 tests), 70%+ coverage, comprehensive fixtures                                                                                    |
 
 ---
 
@@ -55,6 +73,7 @@ allowed-tools: Read, Grep
 # Code Reviewer
 
 Analyze the provided code for:
+
 - Best practices violations
 - Potential bugs
 - Security vulnerabilities
@@ -103,12 +122,11 @@ result = agent.invoke({"messages": [{"role": "user", "content": "Review my code"
 
 ```yaml
 ---
-name: my-skill           # Required: unique identifier
-description: ...          # Required: human-readable description
+name: my-skill # Required: unique identifier
+description: ... # Required: human-readable description
 allowed-tools: Bash, Read # Optional: tool allowlist
-version: "1.0"            # Optional: semantic version
+version: "1.0" # Optional: semantic version
 ---
-
 # Skill content with $ARGUMENTS placeholder
 ```
 
@@ -144,6 +162,21 @@ else:
 
 Supported types: `.py`, `.sh`, `.js`, `.rb`, `.pl`, `.bat`, `.cmd`, `.ps1`.
 
+### Script runner (pluggable)
+
+`ScriptExecutor` accepts a `runner` parameter — swap in sandboxed backends:
+
+```python
+from faskill.core.scripts import ScriptExecutor
+from faskill.core.runner import HostRunner  # default (warns once about security)
+
+# Default: bare host
+executor = ScriptExecutor(runner=HostRunner())
+
+# Future: Docker, Firecracker, gVisor...
+# executor = ScriptExecutor(runner=DockerRunner(image="python:3.12"))
+```
+
 ---
 
 ## API Reference
@@ -164,30 +197,32 @@ ctx = create_context(
 
 ### `SkillContext`
 
-| Method | Description |
-|--------|-------------|
-| `discover()` | Sync skill discovery |
-| `adiscover()` | Async skill discovery |
-| `list_skills()` | List all discovered skill metadata |
-| `list_skills(include_qualified=True)` | List names including `plugin:skill` |
-| `get_skill(name)` | Get metadata by name; raises `SkillNotFoundError` |
-| `invoke_skill(name, args)` | Sync invocation with caching |
-| `ainvoke_skill(name, args)` | Async invocation with caching |
-| `execute_skill_script(...)` | Execute a bundled script |
-| `get_cache_stats()` | Cache hit/miss statistics |
-| `clear_cache(name?)` | Clear cache entries |
-| `add_source(path)` | Add a skill directory after construction |
+| Method                                | Description                                       |
+| ------------------------------------- | ------------------------------------------------- |
+| `discover()`                          | Sync skill discovery                              |
+| `adiscover()`                         | Async skill discovery                             |
+| `list_skills()`                       | List all discovered skill metadata                |
+| `list_skills(include_qualified=True)` | List names including `plugin:skill`               |
+| `get_skill(name)`                     | Get metadata by name; raises `SkillNotFoundError` |
+| `invoke_skill(name, args)`            | Sync invocation with caching                      |
+| `ainvoke_skill(name, args)`           | Async invocation with caching                     |
+| `execute_skill_script(...)`           | Execute a bundled script                          |
+| `get_cache_stats()`                   | Cache hit/miss statistics                         |
+| `clear_cache(name?)`                  | Clear cache entries                               |
+| `add_source(path)`                    | Add a skill directory after construction          |
 
 ### Key types
 
-| Type | Description |
-|------|-------------|
-| `SkillMetadata` | Name, description, path, allowed tools, priority |
-| `Skill` | Full skill: metadata + content + scripts |
-| `SkillSource` | Source directory with type and priority |
-| `ScriptMetadata` | Detected script name, path, language, description |
+| Type                    | Description                                        |
+| ----------------------- | -------------------------------------------------- |
+| `SkillMetadata`         | Name, description, path, allowed tools, priority   |
+| `Skill`                 | Full skill: metadata + content + scripts           |
+| `SkillSource`           | Source directory with type and priority            |
+| `ScriptMetadata`        | Detected script name, path, language, description  |
 | `ScriptExecutionResult` | exit_code, stdout, stderr, execution_time_ms, etc. |
-| `CacheStats` | size, max_size, hits, misses, hit_rate |
+| `CacheStats`            | size, max_size, hits, misses, hit_rate             |
+| `Runner`                | Abstract base for script execution backends        |
+| `HostRunner`            | Default runner — bare host subprocess (warns once) |
 
 ### Exception hierarchy
 
@@ -196,18 +231,31 @@ SkillsUseError
 ├── SkillParsingError
 │   ├── InvalidYAMLError
 │   ├── MissingRequiredFieldError
+│   ├── InvalidSkillNameError          # name contains spaces (bypass: NO_FAIL_ON_SPACE=1)
 │   └── InvalidFrontmatterError
 ├── SkillNotFoundError
 ├── SkillInvocationError
 │   ├── ArgumentProcessingError
+│   ├── ArgumentSerializationError
+│   ├── ArgumentSizeError
 │   └── ContentLoadError
-└── SkillSecurityError
-    ├── SuspiciousInputError
-    ├── SizeLimitExceededError
-    ├── PathSecurityError
-    ├── ScriptNotFoundError
-    ├── ScriptPermissionError
-    └── InterpreterNotFoundError
+├── ConfigurationError
+├── AsyncStateError
+├── PluginError
+│   ├── ManifestNotFoundError
+│   ├── ManifestParseError
+│   └── ManifestValidationError
+├── ScriptError
+│   ├── InterpreterNotFoundError
+│   ├── ScriptNotFoundError
+│   ├── ScriptPermissionError
+│   ├── ArgumentSerializationError
+│   ├── ArgumentSizeError
+│   └── ToolIDValidationError
+├── SkillSecurityError
+│   ├── SuspiciousInputError
+│   ├── SizeLimitExceededError
+│   └── PathSecurityError
 ```
 
 ---
@@ -216,15 +264,15 @@ SkillsUseError
 
 See `examples/` directory:
 
-| File | What it demonstrates |
-|------|---------------------|
-| `basic_usage.py` | Sync and async standalone usage |
-| `async_usage.py` | Async usage with FastAPI |
-| `langchain_agent.py` | LangChain agent integration |
-| `multi_source.py` | Multi-source discovery and conflict resolution |
-| `file_references.py` | Secure file path resolution |
-| `caching_demo.py` | Cache performance demonstration |
-| `script_execution.py` | Script execution with error handling |
+| File                  | What it demonstrates                           |
+| --------------------- | ---------------------------------------------- |
+| `basic_usage.py`      | Sync and async standalone usage                |
+| `async_usage.py`      | Async usage with FastAPI                       |
+| `langchain_agent.py`  | LangChain agent integration                    |
+| `multi_source.py`     | Multi-source discovery and conflict resolution |
+| `file_references.py`  | Secure file path resolution                    |
+| `caching_demo.py`     | Cache performance demonstration                |
+| `script_execution.py` | Script execution with error handling           |
 
 ---
 

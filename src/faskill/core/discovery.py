@@ -62,8 +62,6 @@ class SkillDiscovery:
                 skill_files = self.scan_directory(skill_dir)
                 all_skill_files.extend(skill_files)
 
-                logger.debug(f"Found {len(skill_files)} skill(s) in plugin directory {skill_dir}")
-
             return all_skill_files
 
         # For non-plugin sources, scan the source directory directly
@@ -73,7 +71,7 @@ class SkillDiscovery:
         """Scan skills directory for SKILL.md files.
 
         Scans only immediate subdirectories (flat structure). Nested
-        subdirectories are not supported in v0.1.
+        subdirectories are not supported.
 
         Args:
             skills_dir: Root directory to scan for skills
@@ -204,7 +202,6 @@ class SkillDiscovery:
                 # Check for SKILL.md file (case-insensitive)
                 if item.is_file() and item.name.upper() == self.SKILL_FILE_NAME.upper():
                     skill_files.append(item.absolute())
-                    logger.debug(f"Found skill file: {item} (depth={current_depth})")
 
                 # Recurse into subdirectories
                 elif item.is_dir():
@@ -282,8 +279,6 @@ class SkillDiscovery:
                 skill_files = await self.ascan_directory(skill_dir)
                 all_skill_files.extend(skill_files)
 
-                logger.debug(f"Found {len(skill_files)} skill(s) in plugin directory {skill_dir}")
-
             return all_skill_files
 
         # For non-plugin sources, scan the source directory directly
@@ -293,7 +288,7 @@ class SkillDiscovery:
         """Async version of scan_directory for non-blocking skill discovery.
 
         Scans only immediate subdirectories (flat structure). Nested
-        subdirectories are not supported in v0.1.
+        subdirectories are not supported.
 
         Args:
             skills_dir: Root directory to scan for skills

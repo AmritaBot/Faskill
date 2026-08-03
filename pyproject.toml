@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Python library implementing Anthropic's Agent Skills functionality for LLM-powered agents"
 readme = "README.md"
 license = { text = "MIT" }
-authors = [{ name = "Massimo Olivieri", email = "olivmassimo@gmail.com" }]
+authors = [
+    { name = "Massimo Olivieri", email = "olivmassimo@gmail.com" },
+    { name = "AmritaConstant", email = "admin@amritabot.com" },
+]
 keywords = [
     "skills",
     "agents",

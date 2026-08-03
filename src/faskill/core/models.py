@@ -282,7 +282,7 @@ class SkillMetadata:
         name: Unique skill identifier (from YAML frontmatter)
         description: Human-readable description of skill purpose
         skill_path: Absolute path to SKILL.md file
-        allowed_tools: Tool names allowed for this skill (optional, not enforced in v0.1)
+        allowed_tools: Tool names allowed for this skill (optional)
         version: Skill version string (optional, defaults to None if not specified in SKILL.md)
     """
 
@@ -316,7 +316,7 @@ class Skill:
         metadata: Lightweight metadata from discovery phase
         base_directory: Base directory context for skill execution
         _processor: Content processor chain (initialized in __post_init__)
-        _scripts: Cached detected scripts (lazy-loaded, v0.3+)
+        _scripts: Cached detected scripts (lazy-loaded)
     """
 
     metadata: SkillMetadata
@@ -490,7 +490,7 @@ class Skill:
 
     @property
     def scripts(self) -> "list[ScriptMetadata]":
-        """Lazy load detected scripts (v0.3+).
+        """Lazy load detected scripts.
 
         Scripts are detected once on first access and cached for the skill's lifetime.
         Detection scans the skill's scripts/ directory and root directory for executable

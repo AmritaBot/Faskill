@@ -266,11 +266,7 @@ class ManifestValidationError(PluginError):
 
 
 class ScriptError(SkillsUseError):
-    """Base exception for script-related errors.
-
-    Version:
-        Added in v0.3.0
-    """
+    """Base exception for script-related errors."""
 
 
 class InterpreterNotFoundError(ScriptError):

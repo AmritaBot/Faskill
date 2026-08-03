@@ -63,12 +63,6 @@ class SkillRegistry:
             if plugin_name not in self._plugin_skills:
                 self._plugin_skills[plugin_name] = {}
             self._plugin_skills[plugin_name][metadata.name] = metadata
-            logger.debug(
-                "Registered plugin skill: %s:%s from %s",
-                plugin_name,
-                metadata.name,
-                source.directory,
-            )
 
         # Conflict detection
         if metadata.name in self._skills:
@@ -97,7 +91,6 @@ class SkillRegistry:
 
         # Register
         self._skills[metadata.name] = metadata
-        logger.debug("Registered skill: %s from %s", metadata.name, source.source_type.value)
         return True
 
     def clear(self) -> None:

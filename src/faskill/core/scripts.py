@@ -30,8 +30,6 @@ Classes:
 Constants:
     INTERPRETER_MAP: Mapping of file extensions to interpreters
 
-Version:
-    Added in v0.3.0
 """
 
 import json
@@ -388,8 +386,6 @@ class ScriptDescriptionExtractor:
         extractor = ScriptDescriptionExtractor()
         description = extractor.extract(script_path, max_lines=50)
 
-    Version:
-        Added in v0.3.0
     """
 
     def __init__(self, max_chars: int = 500):
@@ -551,8 +547,6 @@ class ScriptDetector:
         detector = ScriptDetector(max_depth=5)
         scripts = detector.detect_scripts(skill_base_dir)
 
-    Version:
-        Added in v0.3.0
     """
 
     def __init__(self, max_depth: int = 5, max_lines_for_description: int = 50):
@@ -747,8 +741,6 @@ class ScriptExecutor:
             skill_metadata=skill.metadata
         )
 
-    Version:
-        Added in v0.3.0
     """
 
     def __init__(

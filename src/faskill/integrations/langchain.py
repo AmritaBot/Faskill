@@ -208,7 +208,7 @@ def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
             description=skill_metadata.description,
             args_schema=SkillInput,
             func=invoke_skill,  # Sync version
-            coroutine=ainvoke_skill,  # Async version (v0.2+)
+            coroutine=ainvoke_skill,  # Async version
         )
 
         tools.append(tool)
@@ -356,7 +356,7 @@ def create_script_tools(skill: "Skill", manager: "SkillContext") -> List[Structu
             if isinstance(arguments, str):
                 arguments = {"input": arguments}
             # Note: execute_skill_script is not async, so we use sync version
-            # Future v0.3.1+ could add aexecute_skill_script for true async
+            # Future: could add aexecute_skill_script for true async
             try:
                 result = manager.execute_skill_script(
                     skill_name=skill_name,

@@ -96,8 +96,6 @@ class SkillParser:
         allowed_tools = self._extract_allowed_tools(frontmatter_dict, skill_path)
         version = self._extract_version(frontmatter_dict, skill_path)
 
-        logger.debug(f"Successfully parsed skill '{name}' from {skill_path.parent.name}")
-
         return SkillMetadata(
             name=name,
             description=description,
@@ -318,7 +316,7 @@ def parse_plugin_manifest(manifest_path: Path) -> PluginManifest:
     """Parse and validate plugin.json manifest with security checks.
 
     This function parses a plugin manifest file (.claude-plugin/plugin.json)
-    following the MCPB (Model Context Protocol Bundle) specification v0.3.
+    following the MCPB (Model Context Protocol Bundle) specification.
 
     Security Features:
         - JSON bomb protection via file size limit (1MB)

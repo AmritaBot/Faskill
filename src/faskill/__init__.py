@@ -81,10 +81,10 @@ __all__ = [
     "SkillMetadata",
     "Skill",
     "FilePathResolver",
-    # Script classes (v0.3+)
+    # Script classes
     "ScriptMetadata",
     "ScriptExecutionResult",
-    # Runner abstraction (v0.4+)
+    # Runner abstraction
     "Runner",
     "HostRunner",
     # Base exceptions
@@ -105,7 +105,7 @@ __all__ = [
     "SuspiciousInputError",
     "SizeLimitExceededError",
     "PathSecurityError",
-    # Script exceptions (v0.3+)
+    # Script exceptions
     "InterpreterNotFoundError",
     "ScriptNotFoundError",
     "ScriptPermissionError",
