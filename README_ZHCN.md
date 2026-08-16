@@ -17,7 +17,7 @@
 ## 功能特性
 
 - **SKILL.md 兼容** — 可直接使用任何已有 skill，即插即用
-- **框架无关** — 可独立使用，也可与 LangChain 集成（更多集成计划中）
+- **框架无关** — 可独立使用，也可与 LangChain、AmritaCore Agent 集成
 - **模型无关** — 适用于任何 LLM
 - **多源发现** — 自定义目录、插件，支持基于优先级的冲突解决
 - **渐进式披露** — 元数据优先加载，80% 内存节省，LRU 缓存；脚本按需加载
@@ -269,6 +269,7 @@ SkillsUseError
 | `basic_usage.py`      | 同步和异步独立使用   |
 | `async_usage.py`      | FastAPI 异步集成     |
 | `langchain_agent.py`  | LangChain Agent 集成 |
+| `amrita_agent.py`     | AmritaCore Agent 集成 |
 | `multi_source.py`     | 多源发现与冲突解决   |
 | `file_references.py`  | 安全文件路径解析     |
 | `caching_demo.py`     | 缓存性能演示         |
@@ -281,6 +282,7 @@ SkillsUseError
 - **[核心功能](docs/core-features.md)** — 多源发现、缓存、脚本、模式
 - **[API 参考](docs/reference.md)** — SKILL.md 规范、系统需求、开发
 - **[LangChain 集成](docs/integration/langchain.md)** — 同步/异步、脚本工具、工具 ID 格式
+- **[AmritaCore 集成](docs/integration/amrita.md)** — 渐进式披露、激活注入脚本工具、工具池卫生
 
 ---
 

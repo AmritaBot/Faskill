@@ -56,15 +56,15 @@ Skills can include executable scripts for deterministic operations. Scripts are 
 
 ### Supported Types
 
-| Extension | Interpreter |
-|-----------|-------------|
-| `.py` | `python3` |
-| `.sh` | `bash` |
-| `.js` | `node` |
-| `.rb` | `ruby` |
-| `.pl` | `perl` |
-| `.bat`, `.cmd` | `cmd` |
-| `.ps1` | `powershell` |
+| Extension      | Interpreter  |
+| -------------- | ------------ |
+| `.py`          | `python3`    |
+| `.sh`          | `bash`       |
+| `.js`          | `node`       |
+| `.rb`          | `ruby`       |
+| `.pl`          | `perl`       |
+| `.bat`, `.cmd` | `cmd`        |
+| `.ps1`         | `powershell` |
 
 ### Basic Script Execution
 
@@ -269,16 +269,19 @@ logging.getLogger("faskill.core.discovery").setLevel(logging.DEBUG)
 ### Common issues
 
 **Skill not found after discovery:**
+
 - Check skill directory path
 - Verify SKILL.md file exists (case-insensitive)
 - Check logs for parsing errors
 
 **YAML parsing errors:**
+
 - Validate YAML syntax (use `yamllint`)
 - Check for proper `---` delimiters
 - Ensure required fields (`name`, `description`) are present
 
 **Arguments not substituted:**
+
 - Use `$ARGUMENTS` (case-sensitive)
 - Avoid typos: `$arguments`, `$ARGUMENT`, `$ ARGUMENTS`
 
@@ -293,4 +296,3 @@ logging.getLogger("faskill.core.discovery").setLevel(logging.DEBUG)
 5. **Keep skills focused**: Large skills (>200KB) may slow invocation
 6. **Use async methods**: `ainvoke_skill()` enables concurrent execution
 7. **Python 3.10+**: Better memory efficiency with dataclass slots
-

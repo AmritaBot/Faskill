@@ -77,14 +77,14 @@ asyncio.run(main())
 
 faskill follows **progressive disclosure** for context efficiency:
 
-| Level | Content | When loaded |
-|-------|---------|-------------|
-| **L1** | Metadata (name, description) | `discover()` / `list_skills()` |
-| **L2** | Full skill body | Lazily on first `invoke_skill()` |
-| **L3** | Scripts | Explicitly via `create_script_tools()` on demand |
+| Level  | Content                      | When loaded                                      |
+| ------ | ---------------------------- | ------------------------------------------------ |
+| **L1** | Metadata (name, description) | `discover()` / `list_skills()`                   |
+| **L2** | Full skill body              | Lazily on first `invoke_skill()`                 |
+| **L3** | Scripts                      | Explicitly via `create_script_tools()` on demand |
 
 `create_langchain_tools()` creates **only prompt-based tools** — script tools are
-**not** auto-created.  To expose scripts to an agent, call `create_script_tools()`
+**not** auto-created. To expose scripts to an agent, call `create_script_tools()`
 after the agent has chosen a skill:
 
 ```python

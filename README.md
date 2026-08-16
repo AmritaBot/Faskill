@@ -17,7 +17,7 @@
 ## Features
 
 - **SKILL.md compatible** — works with any existing skill, drop-in ready
-- **Framework-agnostic** — use standalone or with LangChain (more integrations planned)
+- **Framework-agnostic** — use standalone, with LangChain, or with AmritaCore agents
 - **Model-agnostic** — works with any LLM
 - **Multi-source discovery** — custom directories, plugins with priority-based conflict resolution
 - **Progressive disclosure** — metadata-first loading, 80% memory reduction, LRU caching; scripts loaded on demand
@@ -269,6 +269,7 @@ See `examples/` directory:
 | `basic_usage.py`      | Sync and async standalone usage                |
 | `async_usage.py`      | Async usage with FastAPI                       |
 | `langchain_agent.py`  | LangChain agent integration                    |
+| `amrita_agent.py`     | AmritaCore agent integration                   |
 | `multi_source.py`     | Multi-source discovery and conflict resolution |
 | `file_references.py`  | Secure file path resolution                    |
 | `caching_demo.py`     | Cache performance demonstration                |
@@ -281,6 +282,7 @@ See `examples/` directory:
 - **[Core Features](docs/core-features.md)** — multi-source discovery, caching, scripts, patterns
 - **[API Reference](docs/reference.md)** — SKILL.md spec, system requirements, development
 - **[LangChain Integration](docs/integration/langchain.md)** — sync/async, script tools, tool ID format
+- **[AmritaCore Integration](docs/integration/amrita.md)** — progressive disclosure, script tools on activation, tool pool hygiene
 
 ---
 

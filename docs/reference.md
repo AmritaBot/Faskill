@@ -175,18 +175,18 @@ Main orchestration class for skill discovery and invocation.
 
 **Key Methods**:
 
-| Method | Description |
-|--------|-------------|
-| `discover()` | Synchronous skill discovery |
-| `adiscover()` | Async skill discovery |
-| `add_source(path)` | Add a skill directory (CUSTOM or PLUGIN) |
-| `invoke_skill(name, args)` | Invoke a skill by name |
-| `ainvoke_skill(name, args)` | Async skill invocation |
-| `get_skill(name)` | Get skill metadata (progressive disclosure L1) |
-| `list_skills()` | List all discovered skill names |
-| `execute_skill_script(skill_name, script_name, arguments, timeout)` | Execute a script |
-| `get_cache_stats()` | Get cache hit/miss statistics |
-| `clear_cache(skill_name=None)` | Clear cache entries |
+| Method                                                              | Description                                    |
+| ------------------------------------------------------------------- | ---------------------------------------------- |
+| `discover()`                                                        | Synchronous skill discovery                    |
+| `adiscover()`                                                       | Async skill discovery                          |
+| `add_source(path)`                                                  | Add a skill directory (CUSTOM or PLUGIN)       |
+| `invoke_skill(name, args)`                                          | Invoke a skill by name                         |
+| `ainvoke_skill(name, args)`                                         | Async skill invocation                         |
+| `get_skill(name)`                                                   | Get skill metadata (progressive disclosure L1) |
+| `list_skills()`                                                     | List all discovered skill names                |
+| `execute_skill_script(skill_name, script_name, arguments, timeout)` | Execute a script                               |
+| `get_cache_stats()`                                                 | Get cache hit/miss statistics                  |
+| `clear_cache(skill_name=None)`                                      | Clear cache entries                            |
 
 ### `SkillMetadata`
 
