@@ -140,6 +140,7 @@ def test_amrita_tool_schema_is_openai_paradigm(isolated_manager, skill_factory):
     tools = create_amrita_tools(isolated_manager)
 
     schema = tools.get_tool_meta("greeter")
+    assert schema is not None
     assert schema.type == "function"
     assert schema.strict is True
 
@@ -165,7 +166,10 @@ async def test_amrita_tool_invocation_with_arguments(temp_skills_dir, skill_fact
     handler = tools.get_tool_func("greeter")
     assert handler is not None
 
-    result = await handler({"arguments": "World"})
+    # faskill handlers use the dict contract; amrita_core types them as
+    # ``dict | ToolContext`` and return ``str | None`` — intentionally ignored.
+    result = await handler({"arguments": "World"})  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
 
     assert "Hello World!" in result
     assert "Base directory for this skill:" in result
@@ -183,11 +187,14 @@ async def test_amrita_tool_invocation_default_arguments(temp_skills_dir, skill_f
     tools = create_amrita_tools(manager)
 
     handler = tools.get_tool_func("echo")
+    assert handler is not None
 
-    result = await handler({})
+    result = await handler({})  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
     assert "You said:" in result
 
-    result = await handler({"arguments": None})
+    result = await handler({"arguments": None})  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
     assert "You said:" in result
 
 
@@ -202,12 +209,13 @@ async def test_amrita_tool_error_propagation(temp_skills_dir, skill_factory):
     tools = create_amrita_tools(manager)
 
     handler = tools.get_tool_func("test-skill")
+    assert handler is not None
 
     # Remove skill from registry to simulate deletion
     manager._registry._skills.clear()
 
     with pytest.raises(SkillNotFoundError):
-        await handler({"arguments": "test"})
+        await handler({"arguments": "test"})  # pyright: ignore[reportArgumentType]
 
 
 @pytest.mark.integration
@@ -225,6 +233,7 @@ def test_register_script_tools(fixtures_dir):
     assert tools.has_tool("script-skill__stdin_test")
 
     meta = tools.get_tool_meta("script-skill__extract")
+    assert meta is not None
     assert meta.function.name == "script-skill__extract"
     assert "reads JSON from stdin" in meta.function.description
     assert "How to use this script:" not in meta.function.description
@@ -243,7 +252,8 @@ async def test_register_script_tools_invocation_success(fixtures_dir):
     handler = tools.get_tool_func("script-skill__extract")
     assert handler is not None
 
-    result = await handler({"arguments": json.dumps({"field": "hello"})})
+    result = await handler({"arguments": json.dumps({"field": "hello"})})  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
 
     parsed = json.loads(result)
     assert parsed["status"] == "success"
@@ -262,8 +272,10 @@ async def test_register_script_tools_invocation_failure(fixtures_dir):
     tools = register_amrita_script_tools(skill, manager)
 
     handler = tools.get_tool_func("script-skill__timeout_test")
+    assert handler is not None
 
-    result = await handler({"arguments": "{}"})
+    result = await handler({"arguments": "{}"})  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
 
     parsed = json.loads(result)
     assert parsed["success"] is False
@@ -384,9 +396,10 @@ def test_skill_activation_injects_script_tools(fixtures_dir):
     assert not tools.has_tool("script-skill__convert")
 
     # Invoking the skill tool activates them on the same manager.
-    handler = tools.get_tool("script-skill").func
-    result = asyncio.run(handler({}))
+    handler = tools.get_tool_func("script-skill")
+    assert handler is not None
 
+    result = asyncio.run(handler({}))  # pyright: ignore[reportArgumentType]
     assert isinstance(result, str)
     assert tools.has_tool("script-skill__extract")
     assert tools.has_tool("script-skill__convert")
@@ -408,8 +421,11 @@ def test_skill_activation_skips_unavailable_interpreter(fixtures_dir, monkeypatc
     )
 
     tools = create_amrita_tools(manager)
-    handler = tools.get_tool("script-skill").func
-    result = asyncio.run(handler({}))
+    handler = tools.get_tool_func("script-skill")
+    assert handler is not None
+
+    result = asyncio.run(handler({}))  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
 
     # No script tools registered and the model is told about them.
     assert not tools.has_tool("script-skill__extract")
