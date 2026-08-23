@@ -230,7 +230,7 @@ wheels = [
 
 [[package]]
 name = "amrita-core"
-version = "0.13.5"
+version = "0.13.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -246,9 +246,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "pytz" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/70/bb8f1ea08f069bbb15ea4bf120cb178397704f0996b625745efe642fd635/amrita_core-0.13.5.tar.gz", hash = "sha256:e07ad1952c275ae23036df16e51fa7c583c873c9a22b600f41e1a1109661f44a", size = 181896, upload-time = "2026-08-16T11:27:35.121Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/93/61affe6161125ca9615a441a1ab16ac53744f77bbb2aa2d5f6ffd40ebbd0/amrita_core-0.13.7.tar.gz", hash = "sha256:41085d20b92e7fe4b4e5499e44cca1558daa63f67c6600cbeef044f56729ceeb", size = 184960, upload-time = "2026-08-19T14:37:28.01Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ce/bf/5cf666b7d2a4c3cc3a974a02bb21126b9033506180c20724fbcbac60dea9/amrita_core-0.13.5-py3-none-any.whl", hash = "sha256:0595247635eb0c3ed13e92538db3c6270e4cc7d3c5af60c2504f94f38d5fec64", size = 150288, upload-time = "2026-08-16T11:27:33.901Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/00/ea3b5d436c51ad3781969ea6cbf0cca52112a39614a656f58a14a1ae1d1d/amrita_core-0.13.7-py3-none-any.whl", hash = "sha256:7a08c21859f89dffa9be0aca93969e55d2297f584077766f5b9023e3cf6236ff", size = 151480, upload-time = "2026-08-19T14:37:26.657Z" },
 ]
 
 [[package]]
@@ -3100,8 +3100,8 @@ name = "uvicorn"
 version = "0.52.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
-    { name = "h11", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
+    { name = "click" },
+    { name = "h11" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2e/28/64ca011edf31c715b4fad359c587ea52391aaffa125065695590241ff617/uvicorn-0.52.3.tar.gz", hash = "sha256:18857b9e6579300be55c91c0a1cfd37d9a2cf0cabea33b88275f199eb73b8b58", size = 100621, upload-time = "2026-08-13T16:50:02.899Z" }
