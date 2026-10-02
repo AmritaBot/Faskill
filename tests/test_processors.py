@@ -133,8 +133,7 @@ def test_process_content_escaping_double_dollar():
 
     result = processor.process(content, context)
 
-    # $$ARGUMENTS should become $ARGUMENTS (literal)
-    # $ARGUMENTS should become REPLACED
+    # $$ARGUMENTS becomes the literal $ARGUMENTS; $ARGUMENTS becomes REPLACED.
     assert "$ARGUMENTS" in result  # Escaped version
     assert "REPLACED" in result  # Substituted version
     assert "$$ARGUMENTS" not in result  # No double-dollar in output
@@ -267,10 +266,7 @@ def test_substitute_arguments_empty_with_placeholder():
     assert "$ARGUMENTS" not in result
 
 
-# ==============================================================================
-# Phase 4: User Story 2 - Argument Normalization (T024)
-# ==============================================================================
-# These tests validate the normalize_arguments() function for cache efficiency
+# Phase 4: User Story 2 - Argument Normalization (T024): normalize_arguments() for cache efficiency.
 
 
 def test_normalize_arguments_no_whitespace():

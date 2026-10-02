@@ -113,8 +113,7 @@ def demo_duplicate_plugins():
     logger.info("disambiguated with numeric suffixes (plugin-name-2, plugin-name-3, etc.).")
     logger.info("")
 
-    # Note: This would require creating duplicate plugins for testing
-    # For now, demonstrate the concept
+    # Note: this would require creating duplicate plugins for testing; for now, demonstrate the concept.
     logger.info("Example: If you configure two plugins both named 'data-tools':")
     logger.info("  plugin_dirs=[")
     logger.info("    './plugins/data-tools',  # First one: 'data-tools'")

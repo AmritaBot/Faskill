@@ -309,11 +309,9 @@ class TestFilePathResolver:
         # Test - use backslashes (pathlib handles platform-specific normalization)
         resolved = FilePathResolver.resolve_path(base_dir, "scripts\\helper.py")
 
-        # Verify - path should be within base directory
-        # On Windows, backslashes are normalized; on POSIX, they're literal characters
+        # Verify the path is within base directory (Windows normalizes backslashes; POSIX treats them literally).
         assert resolved.is_relative_to(base_dir)
-        # On POSIX, the backslash becomes part of the filename, which is valid
-        # The security check still passes because the resolved path is within base_dir
+        # On POSIX the backslash becomes part of the filename, which is valid: the security check still passes.
 
     def test_resolve_with_spaces_in_path(self, tmp_path: Path):
         """Test resolving path with spaces in file/directory names."""
@@ -358,8 +356,7 @@ class TestFilePathResolver:
         # Test - use different case
         resolved = FilePathResolver.resolve_path(base_dir, "file.txt")
 
-        # Verify - on case-insensitive systems, should resolve to same file
-        # On case-sensitive systems, paths won't match but security check still passes
+        # Verify: on case-insensitive systems this resolves to the same file; on case-sensitive ones the paths differ but the security check still passes.
         assert resolved.is_relative_to(base_dir)
 
     def test_permission_error_handling(self, tmp_path: Path):
@@ -368,8 +365,7 @@ class TestFilePathResolver:
         base_dir = tmp_path / "skill"
         base_dir.mkdir()
 
-        # Create a path that might trigger permission issues
-        # Note: This test may skip on systems where we can't restrict permissions
+        # Create a path that might trigger permission issues (this test may skip where permissions can't be restricted).
         restricted_dir = base_dir / "restricted"
         restricted_dir.mkdir()
 
@@ -377,8 +373,7 @@ class TestFilePathResolver:
             # Try to make directory inaccessible
             os.chmod(restricted_dir, 0o000)
 
-            # Test - try to resolve path in restricted directory
-            # This may or may not raise an error depending on the system
+            # Try to resolve a path in a restricted directory; this may or may not raise depending on the system.
             with contextlib.suppress(PathSecurityError, PermissionError):
                 FilePathResolver.resolve_path(base_dir, "restricted/file.txt")
         finally:
@@ -439,9 +434,7 @@ class TestFilePathResolverEdgeCases:
         base_file = tmp_path / "skill.txt"
         base_file.write_text("content")
 
-        # Test - resolved path will be sibling to base_file
-        # On some systems this will pass (path is still relative to parent dir)
-        # On others it may fail. Just verify it doesn't crash.
+        # The resolved path will be a sibling of base_file: it may pass (relative to parent) or fail, so just verify it doesn't crash.
         try:
             resolved = FilePathResolver.resolve_path(base_file, "file.txt")
             # If it succeeds, verify the path is safe
@@ -456,8 +449,7 @@ class TestFilePathResolverEdgeCases:
         base_dir = tmp_path / "skill"
         base_dir.mkdir()
 
-        # Test - ... is treated as a literal directory name on POSIX systems
-        # It doesn't cause traversal, so it's actually safe
+        # "..." is a literal directory name on POSIX, so it causes no traversal and is safe.
         resolved = FilePathResolver.resolve_path(base_dir, ".../file.txt")
 
         # Verify - should resolve to base_dir/.../file.txt (doesn't exist, but path is safe)

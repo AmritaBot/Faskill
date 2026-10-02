@@ -86,8 +86,7 @@ def test_discover_duplicate_skill_names_logs_warning(
     skill_factory("duplicate-name", "First version", "Content 1")
     skill_factory("duplicate-name-2", "Second version", "Content 2")
 
-    # Manually rename the second skill directory to match the first skill's name
-    # This simulates the duplicate name scenario
+    # Manually rename the second skill directory to match the first skill's name (simulates the duplicate-name scenario).
     (temp_skills_dir / "duplicate-name-2").rename(temp_skills_dir / "duplicate-name-copy")
 
     # Now create a SKILL.md with duplicate name in the renamed directory
@@ -108,8 +107,7 @@ Content for duplicate.
     skills = isolated_manager.list_skills()
     discovered = {skill.name: skill for skill in skills}
 
-    # Check that warning was logged (implementation may vary)
-    # The first skill with that name should win
+    # Check that a warning was logged (implementation may vary); the first skill with that name should win.
     assert "duplicate-name" in discovered
 
 

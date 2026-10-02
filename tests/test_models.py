@@ -91,8 +91,7 @@ def test_skill_lazy_content_loading(fixtures_dir, tmp_path):
 
     skill = Skill(metadata=metadata, base_directory=tmp_path)
 
-    # Content should not be loaded yet
-    # Check that content is a property, not already loaded
+    # Content should not be loaded yet: content is a property, not an eagerly loaded attribute.
     assert "content" not in skill.__dict__
 
     # Now access content to trigger loading

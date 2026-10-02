@@ -82,8 +82,7 @@ class TestLangChainAsyncTools:
 
         tools = create_langchain_tools(skill_manager_async)
 
-        # Filter to only skill tools (not script tools) for this generic test
-        # Script tools have specific argument schemas that we can't generically satisfy
+        # Filter to only skill tools for this generic test: script tools have specific argument schemas we can't generically satisfy.
         skill_tools = [tool for tool in tools if "__" not in tool.name]
 
         if len(skill_tools) < 3:
@@ -114,10 +113,7 @@ class TestLangChainAsyncTools:
 
         tool_names = {tool.name for tool in tools}
 
-        # Tool names should include:
-        # 1. Prompt-based tools (skill name only, e.g., "pdf-extractor")
-        # 2. Script-based tools (skill__script format, e.g., "pdf-extractor__extract")
-        # Extract base skill names from both types
+        # Tool names include prompt-based tools (skill name) and script tools (skill__script); extract base skill names from both.
         tool_skill_names = {name.split("__")[0] if "__" in name else name for name in tool_names}
 
         # All tools should correspond to discovered skills
@@ -245,8 +241,7 @@ class TestLangChainAsyncPydanticSchema:
 
         # Result should contain trimmed version
         assert isinstance(result, str)
-        # The whitespace stripping happens in Pydantic validation
-        # The actual content should still be processed
+        # The whitespace stripping happens in Pydantic validation; the actual content should still be processed.
 
 
 class TestLangChainAsyncErrorHandling:
@@ -256,9 +251,7 @@ class TestLangChainAsyncErrorHandling:
     async def test_tool_ainvoke_nonexistent_skill_raises_error(self, skill_manager_async):
         """Test that tool invocation raises error for nonexistent skill."""
 
-        # This test verifies error propagation, but tools are created from
-        # existing skills, so we'd need to delete a skill after tool creation
-        # For now, this tests the error handling path
+        # This test verifies error propagation; tools come from existing skills, so it exercises the success path of the error handling.
         tools = create_langchain_tools(skill_manager_async)
 
         # Filter to skill tools only (script tools have specific schemas)
@@ -280,8 +273,7 @@ class TestLangChainAsyncErrorHandling:
         if len(skill_tools) < 2:
             pytest.skip("Need at least 2 skill tools for this test")
 
-        # Create tasks where all should succeed
-        # (We can't easily create a failing task without modifying state)
+        # Create tasks where all should succeed (a failing task can't be created easily without modifying state).
         tasks = []
         for i, tool in enumerate(skill_tools):
             tasks.append(tool.ainvoke({"arguments": f"test {i}"}))
@@ -351,8 +343,7 @@ class TestLangChainAsyncPerformance:
         )
         concurrent_time = time.perf_counter() - concurrent_start
 
-        # Concurrent should be at least as fast (allowing 50% variance for fast operations)
-        # Note: For very fast operations (< 1ms each), concurrent overhead may dominate
+        # Concurrent should be at least as fast (allowing 50% variance); for very fast operations concurrent overhead may dominate.
         assert concurrent_time <= sequential_time * 1.5
 
 

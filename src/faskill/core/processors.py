@@ -327,8 +327,7 @@ class ArgumentSubstitutionProcessor(ContentProcessor):
         if sys.version_info >= (3, 11):
             return set(template.get_identifiers())
         else:
-            # Fallback: manual pattern matching
-            # Match $identifier or ${identifier}, excluding $$
+            # Fallback: manual pattern matching for $identifier or ${identifier}, excluding $$.
             pattern = r"(?<!\$)\$(?:(\w+)|\{(\w+)\})"
             matches = re.findall(pattern, content)
             # matches is list of tuples, flatten and remove empty strings

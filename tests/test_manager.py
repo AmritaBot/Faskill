@@ -250,12 +250,7 @@ def test_manager_discover_clears_previous_skills(tmp_path):
     assert manager.list_skills()[0].name == "skill1"
 
 
-# ==============================================================================
-# Phase 5.1 Remediation Tests: Default Directory Discovery (User Story 3)
-# ==============================================================================
-# These tests address acceptance scenarios 4-8 from spec.md that were missing
-# in the original v0.2 implementation. They validate tri-state parameter logic
-# (None vs "" vs Path) for SkillContext initialization.
+# Phase 5.1 Remediation Tests: Default Directory Discovery (User Story 3) — tri-state parameter logic (None vs "" vs Path) for SkillContext initialization.
 
 
 def test_scenario_4_explicit_custom_directory_discovered(tmp_path):
@@ -458,13 +453,7 @@ def test_mixed_valid_and_opt_out(tmp_path, monkeypatch):
     assert skills[0].description == "From custom path"
 
 
-# ==============================================================================
-# Phase 3: User Story 1 - Content Caching with Cache Invalidation (T019)
-# ==============================================================================
-# These tests validate the caching behavior added in v0.4, including:
-# - Cache hits/misses tracking
-# - Mtime-based invalidation
-# - Processed content format (base directory injection)
+# Phase 3: User Story 1 - Content Caching with Cache Invalidation (T019): cache hits/misses, mtime-based invalidation, and processed content format (base directory injection).
 
 
 def test_cache_hit_on_repeated_invocation(fixtures_dir):
@@ -615,10 +604,7 @@ def test_cache_stats_hit_rate_calculation(fixtures_dir):
     assert stats.hit_rate == 0.8  # 4 / (4 + 1)
 
 
-# ==============================================================================
-# Phase 4: User Story 2 - Argument Normalization for Cache Efficiency (T025)
-# ==============================================================================
-# These tests validate that whitespace normalization improves cache hit rates
+# Phase 4: User Story 2 - Argument Normalization for Cache Efficiency (T025): whitespace normalization improves cache hit rates.
 
 
 def test_normalization_whitespace_variations_same_cache_entry(fixtures_dir):
@@ -743,10 +729,7 @@ def test_normalization_preserves_case_sensitivity(fixtures_dir):
     assert stats3.hits == 1  # Hits first entry
 
 
-# ==============================================================================
-# Phase 5: User Story 3 - Thread-Safe Concurrent Invocations (T031)
-# ==============================================================================
-# These tests validate thread safety with concurrent async invocations
+# Phase 5: User Story 3 - Thread-Safe Concurrent Invocations (T031).
 
 
 @pytest.mark.asyncio
@@ -829,10 +812,7 @@ async def test_concurrent_cache_statistics_accurate(fixtures_dir):
     assert stats.hit_rate == 10 / 11
 
 
-# ==============================================================================
-# Phase 5: User Story 3 - Cache Management Methods (T032)
-# ==============================================================================
-# These tests validate clear_cache() and aclear_cache() methods
+# Phase 5: User Story 3 - Cache Management Methods (T032): clear_cache() and aclear_cache().
 
 
 def test_clear_cache_specific_skill(fixtures_dir):

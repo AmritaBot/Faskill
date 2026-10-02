@@ -13,9 +13,7 @@ import pytest
 
 from faskill.core.models import ContentCache
 
-# ==============================================================================
 # T020: ContentCache Unit Tests (User Story 1)
-# ==============================================================================
 
 
 @pytest.mark.asyncio

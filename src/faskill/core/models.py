@@ -302,8 +302,7 @@ class SkillMetadata:
             raise ValueError(f"Skill path does not exist: {self.skill_path}")
 
 
-# Note: Cannot use slots=True with cached_property, so Skill uses only frozen=True
-# Memory impact is minimal since content is much larger than object overhead
+# Note: slots=True cannot be combined with cached_property, so Skill uses only frozen=True (memory impact is minimal since content dwarfs object overhead).
 @dataclass(frozen=True)
 class Skill:
     """Full skill with lazy-loaded content (Python 3.10+).

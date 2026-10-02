@@ -81,8 +81,7 @@ class FilePathResolver:
         # Normalize base directory to canonical absolute path
         base_dir_resolved = base_directory.resolve()
 
-        # Join relative path to base and resolve to canonical path
-        # This collapses .. sequences, resolves symlinks, and normalizes separators
+        # Join relative path to base and resolve to canonical path (collapses .., resolves symlinks, normalizes separators).
         try:
             requested_path = (base_dir_resolved / relative_path).resolve()
         except (OSError, RuntimeError) as e:

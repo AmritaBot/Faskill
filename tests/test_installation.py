@@ -82,8 +82,7 @@ def test_package_metadata_attributes():
     # Verify common metadata attributes exist
     assert hasattr(faskill, "__version__")
 
-    # Check for optional metadata
-    # Note: Not all packages expose these, so we just verify the module is importable
+    # Check for optional metadata: not all packages expose these, so just verify the module is importable.
     assert faskill.__name__ == "faskill"
 
     # Verify main exports are available

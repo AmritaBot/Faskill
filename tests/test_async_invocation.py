@@ -221,9 +221,7 @@ class TestAsyncStateManagement:
         manager = SkillContext(skill_dirs=[skills_directory])
         await manager.adiscover()
 
-        # Note: invoke_skill doesn't check init_mode in current implementation
-        # This test documents expected behavior
-        # If state checking is added later, update this test
+        # Note: invoke_skill doesn't check init_mode today; this test documents expected behavior (update if state checking is added).
         result = manager.invoke_skill("markdown-formatter", "test")
         assert isinstance(result, str)
 

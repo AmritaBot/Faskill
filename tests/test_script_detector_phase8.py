@@ -120,8 +120,7 @@ class TestScriptDetectorPhase8:
         # Should NOT find level 6 (exceeds max_depth=5)
         assert "level6" not in script_names
 
-        # Total: 6 Python scripts + 1 shell script = 7 scripts
-        # (level1.sh is also detected)
+        # Total: 6 Python scripts + 1 shell script (level1.sh) = 7 scripts.
         assert len(scripts) >= 7
 
     def test_t056_max_depth_limits_recursion(self, temp_skill_dir):
@@ -202,9 +201,7 @@ class TestScriptDetectorPhase8:
         # Verify all 50 scripts detected
         assert len(scripts) == 50
 
-        # Performance requirement: <10ms for 50 scripts
-        # Note: This may vary by system, so we use a more lenient threshold
-        # The spec requires <10ms for 95% of cases, not 100%
+        # Spec requires <10ms for 50 scripts in 95% of cases; use a lenient threshold since timing varies by system.
         assert elapsed_ms < 50, f"Detection took {elapsed_ms:.2f}ms (expected <50ms)"
 
         print(f"\n✓ Performance benchmark: {len(scripts)} scripts detected in {elapsed_ms:.2f}ms")
@@ -236,10 +233,7 @@ class TestScriptDetectorPhase8:
         (scripts_dir / "valid1.py").write_text('"""Valid script 1"""\nprint("1")')
         (scripts_dir / "valid2.py").write_text('"""Valid script 2"""\nprint("2")')
 
-        # Create script that will cause metadata extraction to fail
-        # (e.g., permission denied - we'll simulate by creating an invalid path scenario)
-        # For testing purposes, we'll just ensure that if one script fails,
-        # others are still detected
+        # Create a script that may fail metadata extraction; just ensure that if one script fails, others are still detected.
 
         detector = ScriptDetector()
         scripts = detector.detect_scripts(skill_dir)

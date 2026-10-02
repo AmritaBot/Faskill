@@ -145,8 +145,7 @@ def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
     skill_metadatas: List[SkillMetadata] = manager.list_skills(include_qualified=False)
 
     for skill_metadata in skill_metadatas:
-        # CRITICAL: Use default parameter to capture skill name at function creation
-        # Without this, all functions would reference the final loop value (Python late binding)
+        # CRITICAL: capture the skill name as a default parameter, or every function would reference the final loop value (Python late binding).
         def invoke_skill(arguments: str = "", skill_name: str = skill_metadata.name) -> str:
             """Sync skill invocation for sync agents.
 
@@ -170,10 +169,7 @@ def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
                 ArgumentProcessingError: If processing fails
                 SizeLimitExceededError: If arguments exceed 1MB
             """
-            # Three-layer error handling approach:
-            # 1. Let faskill exceptions bubble up (detailed error messages)
-            # 2. LangChain catches and formats them for agent
-            # 3. Agent decides whether to retry or report to user
+            # Let faskill exceptions bubble up; LangChain formats them and the agent decides whether to retry or report.
             return manager.invoke_skill(skill_name, arguments)
 
         async def ainvoke_skill(arguments: str = "", skill_name: str = skill_metadata.name) -> str:
@@ -199,10 +195,7 @@ def create_langchain_tools(manager: "SkillContext") -> List[StructuredTool]:
             """
             return await manager.ainvoke_skill(skill_name, arguments)
 
-        # Create StructuredTool with both sync and async support
-        # LangChain automatically routes:
-        # - tool.invoke() → func (sync)
-        # - await tool.ainvoke() → coroutine (async)
+        # StructuredTool with sync + async support: tool.invoke() → func, await tool.ainvoke() → coroutine.
         tool = StructuredTool(
             name=skill_metadata.name,
             description=skill_metadata.description,
@@ -272,14 +265,12 @@ def create_script_tools(skill: "Skill", manager: "SkillContext") -> List[Structu
         # Get fully qualified tool name: "{skill_name}__{script_name}"
         tool_name = script.get_fully_qualified_name(skill.metadata.name)
 
-        # Use description from script metadata (extracted from comments/docstrings)
-        # Empty string if no description found (per FR-009)
+        # Use the description from script metadata (extracted from comments/docstrings), empty if none found (per FR-009).
         tool_description = (
             script.description if script.description else f"Execute {script.name} script"
         )
 
-        # CRITICAL: Use default parameters to capture values at function creation time
-        # This prevents Python's late-binding closure issue
+        # CRITICAL: capture values as default parameters to prevent Python's late-binding closure issue.
         def invoke_script(
             arguments: str | Dict[str, Any] | None = None,
             skill_name: str = skill.metadata.name,
@@ -327,9 +318,7 @@ def create_script_tools(skill: "Skill", manager: "SkillContext") -> List[Structu
                 raise ToolException(error_msg)
 
             except Exception as e:
-                # Convert faskill exceptions to ToolException
-                # This includes: ScriptNotFoundError, InterpreterNotFoundError,
-                # PathSecurityError, etc.
+                # Convert faskill exceptions (ScriptNotFoundError, InterpreterNotFoundError, PathSecurityError, ...) to ToolException.
                 raise ToolException(f"Script execution error: {str(e)}") from e
 
         async def ainvoke_script(
@@ -355,8 +344,7 @@ def create_script_tools(skill: "Skill", manager: "SkillContext") -> List[Structu
             # Convert string arguments to dict form expected by execute_skill_script
             if isinstance(arguments, str):
                 arguments = {"input": arguments}
-            # Note: execute_skill_script is not async, so we use sync version
-            # Future: could add aexecute_skill_script for true async
+            # Note: execute_skill_script is sync; a true-async aexecute_skill_script could be added later.
             try:
                 result = manager.execute_skill_script(
                     skill_name=skill_name,

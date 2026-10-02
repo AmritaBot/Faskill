@@ -100,10 +100,7 @@ def test_memory_usage_50_skills_10_percent_usage(temp_skills_dir: Path, skill_fa
     skills_metadata = manager.list_skills()
     assert len(skills_metadata) == 50
 
-    # Estimate metadata memory (rough approximation)
-    # Each SkillMetadata has: name (~20 bytes), description (~30 bytes), path (~200 bytes)
-    # Total per skill: ~250 bytes
-    # 50 skills: ~12.5 KB for metadata
+    # Rough metadata memory estimate: ~250 bytes per skill (name ~20 + description ~30 + path ~200), ~12.5 KB for 50 skills.
 
     # Load 10% of skills (5 skills)
     loaded_skills = []
@@ -112,18 +109,11 @@ def test_memory_usage_50_skills_10_percent_usage(temp_skills_dir: Path, skill_fa
         _ = skill.content  # Force content loading
         loaded_skills.append(skill)
 
-    # Rough memory calculation:
-    # - Metadata (50 skills): ~12.5 KB
-    # - Loaded content (5 skills × 5KB): ~25 KB
-    # - Manager overhead: ~50 KB (dict structures, caching)
-    # - Total: ~87.5 KB (well under 5MB target)
+    # Rough memory: metadata ~12.5 KB + loaded content ~25 KB + manager overhead ~50 KB ≈ 87.5 KB (well under the 5MB target).
 
-    # This test primarily validates that lazy loading prevents excessive memory usage
-    # Actual memory profiling would require memory_profiler or similar tools
-    # For now, we validate the architecture (lazy loading) is working
+    # Validates that lazy loading prevents excessive memory usage; precise profiling would need memory_profiler.
 
-    # Verify only 5 skills have loaded content (via cache)
-    # This is an architectural test rather than precise memory measurement
+    # Verify only 5 skills have loaded content (via cache); this is an architectural test, not a precise measurement.
     assert len(loaded_skills) == 5
     for skill in loaded_skills:
         assert len(skill.content) > 1000  # Content is loaded

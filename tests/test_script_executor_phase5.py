@@ -454,8 +454,7 @@ Content
 
     def test_custom_timeout_zero_not_allowed_by_subprocess(self, tmp_path):
         """Test edge case: timeout=0 is technically allowed but kills immediately."""
-        # Note: subprocess.run(timeout=0) is valid but will likely timeout immediately
-        # This test documents the behavior but doesn't enforce it as a requirement
+        # Note: subprocess.run(timeout=0) is valid but times out immediately; this documents the behavior without enforcing it.
 
         skill_dir = tmp_path / "test-skill"
         skill_dir.mkdir()
@@ -478,9 +477,7 @@ Content
         manager = SkillContext(skill_dirs=[tmp_path], default_script_timeout=30)
         manager.discover()
 
-        # Execute with timeout=0 (immediate timeout, probably)
-        # Note: This may or may not timeout depending on system performance
-        # We just verify it doesn't crash
+        # Execute with timeout=0; it may or may not time out depending on system performance, so just verify it doesn't crash.
         result = manager.execute_skill_script(
             skill_name="test-skill",
             script_name="instant",
@@ -517,9 +514,7 @@ print("Completed")
             script_path=script, arguments={}, skill_base_dir=tmp_path, skill_metadata=metadata
         )
 
-        # Should complete successfully (just under timeout)
-        # Note: System load may cause this to occasionally timeout
-        # We accept either outcome as valid for this edge case
+        # Should complete just under the timeout, though system load may occasionally time it out; either outcome is valid.
         if result.exit_code == 0:
             assert not result.timeout
             assert "Completed" in result.stdout

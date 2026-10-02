@@ -45,8 +45,7 @@ def test_missing_required_field_logs_error_and_continues(
     assert len(skills) == 1
     assert skills[0].name == "valid-skill"
 
-    # Verify ERROR was logged for invalid skill
-    # Check both message and levelname since the error is in the exception message
+    # Verify ERROR was logged for the invalid skill (check message and levelname, since the error is in the exception message).
     assert any(
         "error" in record.message.lower() or record.levelname == "ERROR"
         for record in caplog.records
@@ -64,8 +63,7 @@ def test_invalid_yaml_syntax_raises_validation_error(isolated_manager, temp_skil
 
     isolated_manager.discover()
 
-    # Attempting to get the skill should fail gracefully
-    # (discovery logs error but doesn't crash)
+    # Attempting to get the skill should fail gracefully (discovery logs the error but doesn't crash).
     skills = isolated_manager.list_skills()
     assert len(skills) == 0  # Invalid skill not discovered
 
@@ -94,9 +92,7 @@ def test_duplicate_skill_names_first_wins_with_warning(
     isolated_manager, temp_skills_dir: Path, caplog
 ):
     """Test that first skill wins when duplicates exist, with WARNING logged."""
-    # Create two skills with same name in different directories manually
-    # (can't use skill_factory since it checks for duplicates)
-    # Use flat structure: immediate subdirectories of skills_dir
+    # Create two same-named skills manually (skill_factory checks for duplicates) as immediate subdirectories of skills_dir.
     dir1 = temp_skills_dir / "duplicate-skill-first"
     dir1.mkdir(parents=True, exist_ok=True)
     (dir1 / "SKILL.md").write_text(

@@ -332,8 +332,7 @@ class TestQualifiedSkillNameParsing:
 
     def test_parse_qualified_name_with_colon_in_skill(self):
         """Test parsing qualified name with colon in skill part (valid)."""
-        # Implementation uses split(":", 1) so "plugin:skill:extra" is valid
-        # It splits to plugin="plugin" and skill="skill:extra"
+        # Implementation uses split(":", 1), so "plugin:skill:extra" splits to plugin="plugin" and skill="skill:extra".
         parsed = QualifiedSkillName.parse("plugin:skill:extra")
 
         assert parsed.plugin == "plugin"

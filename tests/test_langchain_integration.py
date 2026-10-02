@@ -230,8 +230,7 @@ def test_langchain_tool_error_propagation(temp_skills_dir, skill_factory):
 
     tool = tools[0]
 
-    # Test 1: Skill not found error (after discovery but skill removed)
-    # Remove skill from manager's cache to simulate deletion
+    # Test 1: skill not found — remove the skill from the manager's cache to simulate deletion.
     manager._registry._skills.clear()
 
     with pytest.raises(SkillNotFoundError) as exc_info:

@@ -720,8 +720,7 @@ class ScriptDetector:
             return None
 
 
-# ScriptExecutor class will be implemented in the next phase
-# Placeholder for now to complete the module structure
+# Placeholder for the ScriptExecutor class, to be implemented in the next phase.
 class ScriptExecutor:
     """Execute scripts with security controls and timeout enforcement.
 
