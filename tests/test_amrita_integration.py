@@ -24,6 +24,8 @@ import pytest
 # Skip all tests in this file if amrita-core is not installed
 pytest.importorskip("amrita_core")
 
+from amrita_core import create_agent
+from amrita_core.base.backend import BackendSlots
 from amrita_core.config import AmritaConfig, set_config
 from amrita_core.tools.manager import MultiToolsManager, ToolsManager
 
@@ -33,6 +35,7 @@ from faskill.integrations.amcore import (
     build_script_usage_prompt,
     build_skill_usage_prompt,
     clone_tools_manager,
+    create_amrita_backend,
     create_amrita_tools,
     register_amrita_script_tools,
 )
@@ -57,8 +60,7 @@ def _remove_all_tools() -> None:
     """Initialize config and remove every tool on the global ToolsManager."""
     set_config(AmritaConfig())
     global_tools = ToolsManager()
-    # Traverse the internal registry directly: get_tools() evaluates each
-    # tool's enable_if(), which requires the global config to be initialized.
+    # Traverse the internal registry directly: get_tools() evaluates each tool's enable_if(), which requires the global config.
     for name in list(global_tools._models):
         global_tools.remove_tool(name)
 
@@ -166,8 +168,7 @@ async def test_amrita_tool_invocation_with_arguments(temp_skills_dir, skill_fact
     handler = tools.get_tool_func("greeter")
     assert handler is not None
 
-    # faskill handlers use the dict contract; amrita_core types them as
-    # ``dict | ToolContext`` and return ``str | None`` — intentionally ignored.
+    # faskill handlers use the dict contract; amrita_core types them as ``dict | ToolContext`` returning ``str | None`` — intentionally ignored.
     result = await handler({"arguments": "World"})  # pyright: ignore[reportArgumentType]
     assert isinstance(result, str)
 
@@ -456,3 +457,56 @@ def test_custom_tools_manager_reused(isolated_manager, skill_factory):
     # Custom manager does NOT touch the global singleton
     assert not ToolsManager().has_tool("skill-a")
     assert not ToolsManager().has_tool("skill-b")
+
+
+@pytest.mark.integration
+@pytest.mark.requires_amrita
+def test_create_amrita_backend_serves_tools(isolated_manager, skill_factory):
+    """create_amrita_backend() wires a faskill pool into BackendSlots."""
+    skill_factory("backend-skill", "Backend skill", "Content")
+    isolated_manager.discover()
+    tools = create_amrita_tools(isolated_manager)
+
+    backend = create_amrita_backend(tools)
+
+    assert isinstance(backend, BackendSlots)
+    assert asyncio.run(backend.ability.load_tools("session-1")) is tools
+    assert asyncio.run(backend.ability.load_ability_all("session-1")).tools is tools
+
+
+@pytest.mark.integration
+@pytest.mark.requires_amrita
+def test_create_agent_accepts_faskill_backend(isolated_manager, skill_factory):
+    """AmritaCore 1.0 resolves tools via backend=, not a tools_manager kwarg."""
+    skill_factory("backend-skill", "Backend skill", "Content")
+    isolated_manager.discover()
+    tools = create_amrita_tools(isolated_manager)
+
+    agent = create_agent(
+        base_url="https://api.openai.com/v1",
+        api_key="test-key",
+        model="gpt-4o-mini",
+        backend=create_amrita_backend(tools),
+        train="You are a test agent.",
+    )
+
+    chat = agent.get_chatobject("hello")
+    assert chat.session_id
+
+
+@pytest.mark.integration
+@pytest.mark.requires_amrita
+def test_create_agent_rejects_tools_manager_kwarg(isolated_manager, skill_factory):
+    """Guard the V1 breakage: create_agent() no longer takes tools_manager."""
+    skill_factory("backend-skill", "Backend skill", "Content")
+    isolated_manager.discover()
+    tools = create_amrita_tools(isolated_manager)
+
+    with pytest.raises(TypeError):
+        create_agent(
+            base_url="https://api.openai.com/v1",
+            api_key="test-key",
+            model="gpt-4o-mini",
+            tools_manager=tools,
+            train="You are a test agent.",
+        )

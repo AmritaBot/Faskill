@@ -24,7 +24,8 @@ Progressive disclosure (a skill is an atomic execution unit):
 Tool-pool hygiene: registration functions take ``copy: bool = True`` and
 clone the target manager's registry before registering, so the global
 ``ToolsManager`` singleton is never polluted.  Use :func:`clone_tools_manager`
-for a fresh per-session tool pool.
+for a fresh per-session tool pool, and :func:`create_amrita_backend` to hand
+that pool to an AmritaCore 1.0 agent (``create_agent(..., backend=...)``).
 
 Installation:
     pip install faskill[amrita]
@@ -39,6 +40,9 @@ from typing import TYPE_CHECKING, Any, Dict
 
 # Import guards for optional dependencies
 try:
+    from amrita_core.base.backend import BackendSlots, MemoryBackend
+    from amrita_core.builtins.backends import LegacyBackend
+    from amrita_core.contexts import AbilityContext
     from amrita_core.tools.manager import MultiToolsManager, ToolsManager
     from amrita_core.tools.models import (
         FunctionDefinitionSchema,
@@ -61,9 +65,7 @@ if TYPE_CHECKING:
 # Tool parameter name (aligned with the LangChain integration's SkillInput)
 _ARGUMENTS_PARAM = "arguments"
 
-# System-role prompt sections appended to the agent's system prompt (train).
-# They teach the model — once, globally — when and how to call the registered
-# skill/script tools, instead of repeating the guide in every tool description.
+# System-role prompt sections appended to the agent's system prompt (train) that teach the model when and how to call the registered skill/script tools, instead of repeating the guide in every tool description.
 _SKILL_USAGE_SECTION = (
     "\n\n## Available faskill skills\n"
     "Call a skill tool when the user's task matches its purpose. "
@@ -74,10 +76,10 @@ _SKILL_USAGE_SECTION = (
 
 _SCRIPT_USAGE_SECTION = (
     "\n\n## Skill scripts\n"
-    'Pass a JSON object as "arguments" (JSON string or dict); it is forwarded '
-    "to the script via stdin. On success the script stdout is returned; on "
-    'failure a JSON object {"success": false, "error": "..."} is returned '
-    "so you can self-correct."
+    'Pass a JSON object encoded as a string in "arguments"; it is parsed and '
+    "forwarded to the script via stdin. On success the script stdout is "
+    'returned; on failure a JSON object {"success": false, "error": "..."} is '
+    "returned so you can self-correct."
 )
 
 
@@ -156,6 +158,71 @@ def clone_tools_manager(tools_manager: MultiToolsManager) -> MultiToolsManager:
     return clone
 
 
+class _SkillAbilityBackend(LegacyBackend):
+    """In-process ability backend that serves a faskill tool manager.
+
+    Subclasses :class:`~amrita_core.builtins.backends.LegacyBackend` (which
+    already implements memory/billing) and overrides only tool resolution, so
+    the agent sees the faskill pool instead of the global ``ToolsManager``
+    singleton.
+    """
+
+    def __init__(self, tools: MultiToolsManager) -> None:
+        super().__init__()
+        self._skill_tools = tools
+
+    async def load_ability_all(self, session_id: str) -> AbilityContext:  # noqa: ARG002
+        # Reuse the global context's presets/mcp/extra so only the tool pool differs.
+        base = self.glb
+        return AbilityContext(
+            tools=self._skill_tools,
+            presets=base.presets,
+            mcp=base.mcp,
+            extra=base.extra,
+        )
+
+    async def load_tools(self, session_id: str) -> MultiToolsManager:  # noqa: ARG002
+        return self._skill_tools
+
+
+def create_amrita_backend(
+    tools: MultiToolsManager,
+    memory_backend: MemoryBackend | None = None,
+) -> BackendSlots:
+    """Wire a faskill tool manager into an AmritaCore 1.0 agent.
+
+    AmritaCore 1.0 resolves tools through ``AbilityBackend.load_tools()`` — the
+    default :class:`~amrita_core.builtins.backends.LegacyBackend` returns the
+    global ``ToolsManager()`` singleton, and ``create_agent()`` no longer
+    accepts a ``tools_manager`` argument.  Pass the slots built here as
+    ``backend=`` to run an agent against a per-session pool (e.g. the clone
+    returned by :func:`create_amrita_tools`):
+
+    .. code-block:: python
+
+        tools = create_amrita_tools(ctx)            # per-session clone
+        agent = create_agent(
+            base_url=...,
+            api_key=...,
+            model=...,
+            backend=create_amrita_backend(tools),
+            train=DEFAULT_INSTRUCTIONS + build_skill_usage_prompt(ctx),
+        )
+
+    Args:
+        tools: Tool manager to serve to the agent (usually the value returned
+            by :func:`create_amrita_tools`).
+        memory_backend: Optional memory backend.  Defaults to the same
+            in-process backend used for abilities (matching
+            ``BackendSlots.default()``).
+
+    Returns:
+        ``BackendSlots`` whose ability backend resolves to ``tools``.
+    """
+    ability = _SkillAbilityBackend(tools)
+    return BackendSlots(ability=ability, memory=memory_backend or ability)
+
+
 def _interpreter_available(script: ScriptMetadata) -> bool:
     """Check whether the script's interpreter is available on this host.
 
@@ -199,9 +266,7 @@ def _make_script_handler(
         if arguments is None:
             arguments = {}
         if isinstance(arguments, str):
-            # Scripts expect structured input; try to parse the string as a
-            # JSON dict.  If it is not valid JSON, wrap it under "input" —
-            # the same convention used by the LangChain integration.
+            # Scripts expect structured input; parse the string as a JSON dict, falling back to {"input": <string>} (same convention as the LangChain integration).
             try:
                 parsed = json.loads(arguments)
                 arguments = parsed if isinstance(parsed, dict) else {"input": arguments}
@@ -268,7 +333,7 @@ def _register_skill_scripts(
             name=tool_name,
             description=tool_description,
             parameter_description=(
-                "Arguments to pass to the script via stdin (string or JSON dict)"
+                "Arguments to pass to the script via stdin as a JSON string"
             ),
         )
         _register_tool(tools_manager, schema, handler)
@@ -437,11 +502,12 @@ def create_amrita_tools(
             ctx.discover()
 
             # Registered onto a clone of the global ToolsManager — the global
-            # singleton stays clean.
+            # singleton stays clean.  AmritaCore 1.0 resolves tools through the
+            # backend, so wire the clone in with create_amrita_backend().
             tools = create_amrita_tools(ctx)
             agent = create_agent(
                 ...,
-                tools_manager=tools,
+                backend=create_amrita_backend(tools),
                 train=DEFAULT_INSTRUCTIONS + build_skill_usage_prompt(ctx),
             )
             chat = agent.get_chatobject("Review the code in main.py")
@@ -460,9 +526,7 @@ def create_amrita_tools(
     for skill_metadata in skill_metadatas:
         skill_name = skill_metadata.name
 
-        # CRITICAL: Use default parameters to capture values at function creation
-        # time.  Without this, all handlers would reference the final loop value
-        # (Python late-binding closure issue).
+        # CRITICAL: capture the loop value as a default parameter, or every handler would reference the final value (Python late-binding closure).
         async def invoke_skill(
             data: Dict[str, Any],
             _name: str = skill_name,
@@ -476,8 +540,7 @@ def create_amrita_tools(
             if arguments is None:
                 arguments = ""
             result = await asyncio.to_thread(manager.invoke_skill, _name, arguments)
-            # Progressive disclosure L3: the model chose this skill → activate
-            # its script tools on the same manager.
+            # Progressive disclosure L3: the model chose this skill → activate its script tools on the same manager.
             note = _activate_skill_scripts(_name, manager, tools)
             return f"{result}{note}"
 
@@ -546,6 +609,7 @@ __all__ = [
     "build_script_usage_prompt",
     "build_skill_usage_prompt",
     "clone_tools_manager",
+    "create_amrita_backend",
     "create_amrita_tools",
     "register_amrita_script_tools",
 ]

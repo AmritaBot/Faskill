@@ -37,7 +37,11 @@ import os
 from amrita_core import create_agent, minimal_init
 from amrita_core.consts import DEFAULT_INSTRUCTIONS
 from faskill import create_context
-from faskill.integrations.amcore import create_amrita_tools, build_skill_usage_prompt
+from faskill.integrations.amcore import (
+    build_skill_usage_prompt,
+    create_amrita_backend,
+    create_amrita_tools,
+)
 
 
 async def main() -> None:
@@ -47,16 +51,15 @@ async def main() -> None:
     ctx = create_context(skill_dirs=["./skills"])
     ctx.discover()
 
-    # 2. Mix skills into the global ToolsManager (AbilityContext.tools)
-    create_amrita_tools(ctx)
+    # 2. Register skills onto a per-session clone of the global ToolsManager
+    tools = create_amrita_tools(ctx)
 
-    # 3. Create an agent with the default tools manager (glb.tools) and a
-    #    system prompt snippet that tells the model how to use the skills
+    # 3. Create an agent; AmritaCore 1.0 resolves tools through the backend, so wire the pool in with a BackendSlots (create_agent() no longer takes a tools_manager argument).
     agent = create_agent(
         base_url="https://api.openai.com/v1",
         api_key=os.environ["OPENAI_API_KEY"],
         model="gpt-4o-mini",
-        tools_manager=None,  # defaults to AbilityContext.tools (glb.tools)
+        backend=create_amrita_backend(tools),
         train=DEFAULT_INSTRUCTIONS + build_skill_usage_prompt(ctx),
     )
 
@@ -71,6 +74,28 @@ asyncio.run(main())
 
 The agent decides _when_ to call a skill tool; AmritaCore validates the
 arguments against the schema and feeds the result back.
+
+### Wiring tools into an agent (AmritaCore 1.0)
+
+AmritaCore 1.0 resolves a session's tools through
+`AbilityBackend.load_tools(session_id)`, and `create_agent()` no longer
+accepts a `tools_manager=` keyword. There are two ways to connect faskill
+tools:
+
+- **Per-session pool (recommended)** — `create_amrita_tools(ctx)` returns a
+  clone of the global manager; pass `backend=create_amrita_backend(tools)` to
+  `create_agent()` as shown above.
+- **Global singleton** — register directly onto `ToolsManager()` with
+  `copy=False`; the default backend (`LegacyBackend`) serves `glb.tools`
+  automatically, so no `backend=` is needed:
+
+  ```python
+  create_amrita_tools(ctx, copy=False)  # mutates the global ToolsManager
+  agent = create_agent(
+      base_url=..., api_key=..., model=...,
+      train=DEFAULT_INSTRUCTIONS + build_skill_usage_prompt(ctx),
+  )
+  ```
 
 ## System Prompt Snippet
 
@@ -100,11 +125,13 @@ contamination (e.g. skills registered by one agent leaking into another's).
 
 ```python
 # Default: clone — global ToolsManager stays clean, we get our own pool
+# (wire it into an agent with create_amrita_backend(tools))
 tools = create_amrita_tools(ctx)
 assert tools is not ToolsManager()  # a clone
 assert not ToolsManager().has_tool("my-skill")
 
-# Opt out: register directly onto the target (mutates it in place)
+# Opt out: register directly onto the global target (mutates it in place).
+# The default LegacyBackend serves glb.tools, so no backend= is needed.
 create_amrita_tools(ctx, copy=False)
 assert ToolsManager().has_tool("my-skill")
 ```
@@ -115,10 +142,11 @@ registry (`_models`) and the disabled-tool set (`_disabled_tools`) into a new
 original. Use it to hand each agent session its own pool:
 
 ```python
-from faskill.integrations.amcore import clone_tools_manager
+from faskill.integrations.amcore import clone_tools_manager, create_amrita_backend
 
 session_tools = clone_tools_manager(ToolsManager())
 create_amrita_tools(ctx, tools_manager=session_tools, copy=False)
+backend = create_amrita_backend(session_tools)  # pass as create_agent(backend=...)
 ```
 
 `register_amrita_script_tools` accepts the same `copy` parameter.
@@ -146,7 +174,9 @@ assert ToolsManager().has_tool("pdf-extractor__extract")
 ```
 
 Each script becomes a tool named `{skill_name}__{script_name}` — e.g.
-`pdf-extractor__extract`. Script tools accept a JSON string or dict:
+`pdf-extractor__extract`. Script tools take a **JSON string** in `arguments`
+(AmritaCore 1.0 validates it against the schema before the handler runs, so a
+raw object would be rejected):
 
 - On success (`exit_code == 0`): returns the script stdout.
 - On failure: returns `{"success": false, "error": "..."}` so the model

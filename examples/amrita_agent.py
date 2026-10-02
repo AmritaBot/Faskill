@@ -31,6 +31,7 @@ def main() -> None:
 
         from faskill.integrations.amcore import (
             build_skill_usage_prompt,
+            create_amrita_backend,
             create_amrita_tools,
         )
     except ImportError as e:
@@ -53,10 +54,7 @@ def main() -> None:
 
     print(f"\nFound {len(manager.list_skills())} skills")
 
-    # Mix skills into AmritaCore tools.  By default (copy=True) they are
-    # registered onto a fresh clone of the global ToolsManager() singleton, so
-    # the global pool stays clean and we get our own per-session tool pool.
-    # Pass copy=False to mix directly into the global ToolsManager() instead.
+    # Mix skills into AmritaCore tools; copy=True (default) registers onto a clone of the global ToolsManager() so the global pool stays clean, while copy=False mixes directly into the global ToolsManager().
     print("\n[2] Mixing skills into AmritaCore tools (cloned tool pool)...")
     tools = create_amrita_tools(manager)
 
@@ -65,9 +63,7 @@ def main() -> None:
         meta = tools.get_tool_meta(name)
         print(f"  - {name}: {meta.function.description[:60]}...")
 
-    # Progressive disclosure L3: script tools are NOT registered eagerly.
-    # When the model invokes a skill tool (below), that skill's script tools
-    # are injected into the same tools manager automatically.
+    # Progressive disclosure L3: script tools are NOT registered eagerly; they are injected into the same tools manager when the model invokes a skill tool.
     print("\n[3] Script tools are injected on skill activation (L3)...")
     script_names = [n for n in tools.get_tools() if "__" in n]
     print(f"  Script tools before activation: {len(script_names)}")
@@ -122,8 +118,7 @@ def main() -> None:
         from amrita_core import create_agent, minimal_init
         from amrita_core.consts import DEFAULT_INSTRUCTIONS
 
-        # Build a system-role prompt snippet that tells the model how to use
-        # the registered skill tools (kept out of tool descriptions)
+        # Build a system-role prompt snippet telling the model how to use the registered skill tools (kept out of tool descriptions).
         system_prompt = DEFAULT_INSTRUCTIONS + build_skill_usage_prompt(manager)
 
         async def _run_agent() -> None:
@@ -132,7 +127,8 @@ def main() -> None:
                 base_url="https://api.openai.com/v1",
                 api_key=os.environ["OPENAI_API_KEY"],
                 model="gpt-4o-mini",
-                tools_manager=tools,
+                # AmritaCore 1.0 resolves tools through the backend, so wire the per-session clone in here.
+                backend=create_amrita_backend(tools),
                 train=system_prompt,
             )
             chat = agent.get_chatobject("Review the code in main.py")

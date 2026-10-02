@@ -19,7 +19,7 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "caio", version = "0.9.25", source = { registry = "https://pypi.org/simple" } },
+    { name = "caio", version = "0.9.25", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/67/e2/d7cb819de8df6b5c1968a2756c3cb4122d4fa2b8fc768b53b7c9e5edb646/aiofile-3.9.0.tar.gz", hash = "sha256:e5ad718bb148b265b6df1b3752c4d1d83024b93da9bd599df74b9d9ffcf7919b", size = 17943, upload-time = "2024-10-08T10:39:35.846Z" }
 wheels = [
@@ -39,7 +39,7 @@ resolution-markers = [
     "(python_full_version >= '3.11' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
 ]
 dependencies = [
-    { name = "caio", version = "0.12.2", source = { registry = "https://pypi.org/simple" } },
+    { name = "caio", version = "0.12.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/14/31/edb06aabd8f8f0b56d659f30800795f40b93cba96be946ce179f6931e3a5/aiofile-3.12.3.tar.gz", hash = "sha256:caa6aa746b5e47e2165f7abd741b6415e49cf4d44fddc0f61844612cc3924d41", size = 21600, upload-time = "2026-08-04T22:59:27.171Z" }
 wheels = [
@@ -230,7 +230,7 @@ wheels = [
 
 [[package]]
 name = "amrita-core"
-version = "0.13.7"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -239,32 +239,35 @@ dependencies = [
     { name = "amrita-sense" },
     { name = "fastmcp-slim", extra = ["client"] },
     { name = "filetype" },
-    { name = "importlib" },
+    { name = "httpx" },
     { name = "jinja2" },
-    { name = "loguru" },
+    { name = "mcp" },
     { name = "openai" },
     { name = "pydantic" },
     { name = "pytz" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/93/61affe6161125ca9615a441a1ab16ac53744f77bbb2aa2d5f6ffd40ebbd0/amrita_core-0.13.7.tar.gz", hash = "sha256:41085d20b92e7fe4b4e5499e44cca1558daa63f67c6600cbeef044f56729ceeb", size = 184960, upload-time = "2026-08-19T14:37:28.01Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/54/3dbcb6d72a9f6fb811e34abd2f99cf68138fe2ed00092ded610209346764/amrita_core-1.0.0.tar.gz", hash = "sha256:379ca574eb67a2e277e4220f83736af0339850cc79ae75cdceeac946762dd488", size = 193850, upload-time = "2026-10-02T02:12:48.579Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dc/00/ea3b5d436c51ad3781969ea6cbf0cca52112a39614a656f58a14a1ae1d1d/amrita_core-0.13.7-py3-none-any.whl", hash = "sha256:7a08c21859f89dffa9be0aca93969e55d2297f584077766f5b9023e3cf6236ff", size = 151480, upload-time = "2026-08-19T14:37:26.657Z" },
+    { url = "https://files.pythonhosted.org/packages/da/9c/5ef1f78ce968ab3e9343841b9b947e7ef774cfb2a01cf1649d6133f54996/amrita_core-1.0.0-py3-none-any.whl", hash = "sha256:08f040a5b963c737996c89aaec5bc5dacb11c3b19d8a72ad3e3bf2cf59582756", size = 155224, upload-time = "2026-10-02T02:12:47.263Z" },
 ]
 
 [[package]]
 name = "amrita-sense"
-version = "0.6.1"
+version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiologic" },
     { name = "anyio" },
     { name = "cachetools" },
+    { name = "colorama" },
     { name = "exceptiongroup" },
     { name = "loguru" },
+    { name = "sniffio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4e/54/d32f93b5e6ba10666f9d912ed1112b7c8f0785923f9abd6eca628a882e2c/amrita_sense-0.6.1.tar.gz", hash = "sha256:1da7bad7920ad27bc2d13ffc5cbb016bc7be01f2af08cbab4e8743365fc1b918", size = 101008, upload-time = "2026-08-07T07:49:19.237Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/9b/2fcc0266385026b9bbe86725b44f3d7c2e9c814ce1108a457f9517aea7f5/amrita_sense-1.1.1.tar.gz", hash = "sha256:0bd2167669f612a7b8b241d96cc1b6c634b72a2e1e3e1cdec9d1a31670b8bdf2", size = 145219, upload-time = "2026-10-01T10:46:12.629Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d8/89/956feea53d2465a9a15673a8cc053b9859557a3aa9aa8d8b60f39b10b903/amrita_sense-0.6.1-py3-none-any.whl", hash = "sha256:0f92f73a7a39234d12ea8bdba55f546a12966ffb7eb076b1d4c325d7ffc69980", size = 94622, upload-time = "2026-08-07T07:49:18.181Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/1f/82df95010c2adaad1f28aaf579b64dc6e1f449084c1dace0979b24a6a3d3/amrita_sense-1.1.1-py3-none-any.whl", hash = "sha256:eacdc54f0ed1b95b5b5900ed91e8305ca8c43bbc473a47d8bc5c9eb13fbb9c88", size = 128337, upload-time = "2026-10-01T10:46:11.308Z" },
 ]
 
 [[package]]
@@ -908,8 +911,8 @@ dev = [
 requires-dist = [
     { name = "aiofiles", specifier = ">=23.0" },
     { name = "aiologic", specifier = ">=0.17.1" },
-    { name = "amrita-core", marker = "extra == 'all'", specifier = ">=0.13.0,<1.0" },
-    { name = "amrita-core", marker = "extra == 'amrita'", specifier = ">=0.13.0,<1.0" },
+    { name = "amrita-core", marker = "extra == 'all'", specifier = ">=1.0.0,<2.0" },
+    { name = "amrita-core", marker = "extra == 'amrita'", specifier = ">=1.0.0,<2.0" },
     { name = "langchain-core", marker = "extra == 'all'", specifier = ">=0.1.0" },
     { name = "langchain-core", marker = "extra == 'langchain'", specifier = ">=0.1.0" },
     { name = "pydantic", marker = "extra == 'all'", specifier = ">=2.0" },
@@ -920,7 +923,7 @@ provides-extras = ["langchain", "amrita", "all"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "amrita-core", specifier = ">=0.13.0,<1.0" },
+    { name = "amrita-core", specifier = ">=1.0.0,<2.0" },
     { name = "langchain-core", specifier = ">=1.5.3" },
     { name = "pyright", specifier = ">=1.1.411" },
     { name = "pytest", specifier = ">=7.0" },
@@ -1116,8 +1119,8 @@ name = "httpcore2"
 version = "2.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/83/a896fc59940fc5a6e2aff3a4be1d92fa890112936803b331cae75a993c34/httpcore2-2.10.0.tar.gz", hash = "sha256:13c0cc3d1919d4f28457f60cd2c2abe04113a8af184ccf1142811beba936f9dc", size = 67427, upload-time = "2026-08-09T09:11:32.123Z" }
 wheels = [
@@ -1184,17 +1187,11 @@ wheels = [
 ]
 
 [[package]]
-name = "importlib"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/31/77/3781f65cafe55480b56914def99022a5d2965a4bb269655c89ef2f1de3cd/importlib-1.0.4.zip", hash = "sha256:b6ee7066fea66e35f8d0acee24d98006de1a0a8a94a8ce6efe73a9a23c8d9826", size = 7074, upload-time = "2016-08-31T19:40:00.728Z" }
-
-[[package]]
 name = "importlib-metadata"
 version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "(python_full_version < '3.14' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/01/15bb152d77b21318514a96f43af312635eb2500c96b55398d020c93d86ea/importlib_metadata-9.0.0.tar.gz", hash = "sha256:a4f57ab599e6a2e3016d7595cfd72eb4661a5106e787a95bcc90c7105b831efc", size = 56405, upload-time = "2026-03-20T06:42:56.999Z" }
 wheels = [
@@ -2828,8 +2825,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "jeepney" },
+    { name = "cryptography", marker = "(python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version >= '3.14' and sys_platform == 'emscripten') or (python_full_version < '3.11' and sys_platform == 'win32') or (python_full_version >= '3.15' and sys_platform == 'win32') or (sys_platform != 'emscripten' and sys_platform != 'win32')" },
+    { name = "jeepney", marker = "(python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version >= '3.14' and sys_platform == 'emscripten') or (python_full_version < '3.11' and sys_platform == 'win32') or (python_full_version >= '3.15' and sys_platform == 'win32') or (sys_platform != 'emscripten' and sys_platform != 'win32')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
@@ -3100,8 +3097,8 @@ name = "uvicorn"
 version = "0.52.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "h11" },
+    { name = "click", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
+    { name = "h11", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2e/28/64ca011edf31c715b4fad359c587ea52391aaffa125065695590241ff617/uvicorn-0.52.3.tar.gz", hash = "sha256:18857b9e6579300be55c91c0a1cfd37d9a2cf0cabea33b88275f199eb73b8b58", size = 100621, upload-time = "2026-08-13T16:50:02.899Z" }
