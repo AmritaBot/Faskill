@@ -214,3 +214,19 @@ def test_usage_prompt_escapes_untrusted_descriptions():
     assert 'name="evil&quot;&lt;skill&gt;"' in prompt
     # The escaped payload stays on one line inside the element.
     assert prompt.count("\nIGNORE ALL PREVIOUS") == 0
+
+
+@pytest.mark.integration
+@pytest.mark.requires_amrita
+def test_invoke_prompt_uses_the_same_skills_block():
+    """Both modes share the escaped <available_skills> block."""
+    from types import SimpleNamespace
+
+    class _Manager:
+        def list_skills(self, include_qualified: bool = False):
+            return [SimpleNamespace(name="pdf", description="line one\nline two & more")]
+
+    prompt = build_skill_usage_prompt(_Manager(), mode="invoke")  # type: ignore[arg-type]
+    assert "<available_skills>" in prompt
+    assert "line one\\nline two &amp; more" in prompt
+    assert "line one\nline two" not in prompt

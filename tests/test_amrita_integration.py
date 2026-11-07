@@ -294,8 +294,8 @@ def test_build_skill_usage_prompt(isolated_manager, skill_factory):
 
     prompt = build_skill_usage_prompt(isolated_manager)
 
-    assert "code-reviewer: Reviews code quality" in prompt
-    assert "test-generator: Generates unit tests" in prompt
+    assert '<skill name="code-reviewer">Reviews code quality</skill>' in prompt
+    assert '<skill name="test-generator">Generates unit tests</skill>' in prompt
     assert "$ARGUMENTS" in prompt
     assert "## Available faskill skills" in prompt
 
