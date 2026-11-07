@@ -15,6 +15,7 @@ All tests use fixtures from conftest.py and tests/fixtures/skills/.
 """
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -123,6 +124,10 @@ def test_duplicate_skill_names_first_wins_with_warning(
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Unix-only test (chmod)")
+@pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    reason="root bypasses file permissions",
+)
 def test_permission_denied_skill_logs_error_and_continues(
     isolated_manager, temp_skills_dir: Path, create_permission_denied_skill, caplog
 ):

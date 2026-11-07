@@ -144,8 +144,8 @@ def test_langchain_tool_invocation_with_arguments(temp_skills_dir, skill_factory
 
     # Result includes base directory prefix and full SKILL.md content (design choice)
     assert "Hello World!" in result
-    assert "Base directory for this skill:" in result
-    assert str(temp_skills_dir / "greeter") in result
+    assert "Supporting files for this skill are resolved relative to the skill directory." in result
+    assert str(temp_skills_dir / "greeter") not in result
 
 
 @pytest.mark.integration
@@ -175,12 +175,12 @@ def test_langchain_tool_invocation_returns_content(temp_skills_dir, skill_factor
     # Test dynamic content (includes base directory and frontmatter)
     result = echo_tool.invoke(input={"arguments": "hello"})
     assert "You said: hello" in result
-    assert "Base directory for this skill:" in result
+    assert "Supporting files for this skill are resolved relative to the skill directory." in result
 
     # Test static content (includes base directory and frontmatter)
     result = static_tool.invoke(input={"arguments": "ignored"})
     assert "This is static content" in result
-    assert "Base directory for this skill:" in result
+    assert "Supporting files for this skill are resolved relative to the skill directory." in result
 
 
 @pytest.mark.integration

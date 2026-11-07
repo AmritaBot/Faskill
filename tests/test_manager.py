@@ -571,14 +571,15 @@ def test_processed_content_includes_base_directory(fixtures_dir):
     assert len(skills) > 0
     skill_name = skills[0].name
     # Get base directory from skill_path (parent directory of SKILL.md)
-    base_dir = skills[0].skill_path.parent
 
     content = manager.invoke_skill(skill_name, "test")
 
     # First line should be base directory
     lines = content.split("\n")
     assert len(lines) > 0
-    assert lines[0] == f"Base directory for this skill: {base_dir}"
+    assert (
+        lines[0] == "Supporting files for this skill are resolved relative to the skill directory."
+    )
 
 
 def test_cache_stats_hit_rate_calculation(fixtures_dir):

@@ -171,8 +171,10 @@ def test_base_directory_processor(tmp_path):
 
     result = processor.process(content, context)
 
-    assert str(base_dir) in result
-    assert result.startswith("Base directory for this skill:")
+    assert str(base_dir) not in result
+    assert result.startswith(
+        "Supporting files for this skill are resolved relative to the skill directory."
+    )
     assert "# My Skill" in result
 
 
@@ -190,14 +192,12 @@ def test_base_directory_processor_includes_file_resolution_helper(tmp_path):
 
     result = processor.process(content, context)
 
-    # Verify base directory is included
-    assert str(base_dir) in result
-    assert result.startswith("Base directory for this skill:")
-
-    # Verify file resolution helper is included (Phase 8 enhancement)
-    assert "Supporting files can be referenced using relative paths" in result
-    assert "FilePathResolver.resolve_path" in result
-    assert "securely access files" in result
+    # Absolute paths and developer-facing API hints must never reach the model
+    assert str(base_dir) not in result
+    assert result.startswith(
+        "Supporting files for this skill are resolved relative to the skill directory."
+    )
+    assert "FilePathResolver" not in result
 
     # Verify original content is preserved
     assert "# My Skill" in result
@@ -217,8 +217,8 @@ def test_base_directory_processor_empty_base_directory():
     result = processor.process(content, context)
 
     # Should still include header with empty path
-    assert "Base directory for this skill:" in result
-    assert "FilePathResolver.resolve_path" in result
+    assert "Supporting files for this skill are resolved relative to the skill directory." in result
+    assert "FilePathResolver" not in result
     assert "# My Skill" in result
 
 
@@ -243,8 +243,8 @@ def test_composite_processor(tmp_path):
 
     result = composite.process(content, context)
 
-    # Should have both base directory and substituted arguments
-    assert str(base_dir) in result
+    # Should have the resolution hint and substituted arguments, without leaking the absolute path
+    assert str(base_dir) not in result
     assert "review code" in result
     assert "$ARGUMENTS" not in result
 

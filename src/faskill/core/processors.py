@@ -113,16 +113,15 @@ def process_skill_content(
         - ~1-5ms per invocation (dominated by string operations)
         - No file I/O, pure in-memory processing
     """
+    # The parameter stays in the signature for API compatibility; the hint no longer embeds the path.
+    del base_dir
+
     # 1. Validate argument size (1MB limit)
     if arguments is not None and len(arguments.encode("utf-8")) > 1_000_000:
         raise SizeLimitExceededError("Arguments exceed maximum size of 1000000 bytes")
 
-    # 2. Prepend base directory context
-    result = f"Base directory for this skill: {base_dir}\n\n"
-    result += "Supporting files can be referenced using relative paths from this base directory.\n"
-    result += (
-        "Use FilePathResolver.resolve_path(base_dir, relative_path) to securely access files.\n\n"
-    )
+    # 2. Prepend a model-facing resolution hint (no absolute paths, no developer API hints)
+    result = "Supporting files for this skill are resolved relative to the skill directory.\n\n"
     result += content
 
     # 3. Handle arguments
@@ -164,7 +163,7 @@ class BaseDirectoryProcessor(ContentProcessor):
     """Injects base directory context and file path resolution helper at beginning of content."""
 
     def process(self, content: str, context: Dict[str, Any]) -> str:
-        """Inject base directory and file path resolution helper at beginning of content.
+        """Inject a relative-path resolution hint at the beginning of the content.
 
         Args:
             content: Raw skill content
@@ -185,14 +184,9 @@ class BaseDirectoryProcessor(ContentProcessor):
 
             # My Skill
         """
-        base_dir = context.get("base_directory", "")
-
-        # Build header with base directory and file resolution helper
-        header = f"Base directory for this skill: {base_dir}\n\n"
-        header += (
-            "Supporting files can be referenced using relative paths from this base directory.\n"
-        )
-        header += "Use FilePathResolver.resolve_path(base_dir, relative_path) to securely access files.\n\n"
+        # Keep the model-facing header free of absolute paths and developer-facing API hints: only the resolution rule matters here. The context argument stays part of the processor interface.
+        del context
+        header = "Supporting files for this skill are resolved relative to the skill directory.\n\n"
 
         return f"{header}{content}"
 

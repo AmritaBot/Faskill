@@ -223,6 +223,33 @@ system-role snippet that lists the script tools and their calling convention
 
 ---
 
+## Progressive Tool Mode
+
+By default the integration registers one tool per skill (`mode="invoke"`).
+When a tool pool holds many skills, pass `mode="progressive"` to register two
+tools instead:
+
+| Tool         | Purpose                                                                                  |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| `skill_open` | Loads a skill body (frontmatter stripped) and lists the relative paths of bundled files   |
+| `skill_read` | Reads one supporting file such as `references/api.md`, with an optional line range         |
+
+```python
+tools = create_amrita_tools(ctx, mode="progressive")
+train = DEFAULT_INSTRUCTIONS + build_skill_usage_prompt(ctx, mode="progressive")
+```
+
+The model opens a skill first and reads only the files it needs, so an
+unused skill costs roughly one line of metadata. `skill_open` also activates
+the skill's script tools, exactly as in invoke mode.
+
+Both handlers return plain strings. Unknown skill names and unsafe paths come
+back as readable error text, so the model can correct itself instead of
+raising through the agent loop. The skill name is a parameter rather than a
+tool name, which also avoids collisions with the global tool pool.
+
+---
+
 ## Tool Schema
 
 Every registered tool follows the OpenAI paradigm:

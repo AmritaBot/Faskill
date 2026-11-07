@@ -9,6 +9,7 @@ SkillParser, and ScriptExecutor.
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Literal, overload
 
@@ -198,6 +199,87 @@ class SkillContext:
         """Load full Skill instance (content loaded lazily)."""
         metadata = self.get_skill(name)
         return Skill(metadata=metadata, base_directory=metadata.skill_path.parent)
+
+    # Progressive disclosure
+
+    def open_skill(
+        self,
+        name: str,
+        arguments: str = "",
+        section: str = "",
+        *,
+        max_chars: int = 12000,
+    ) -> str:
+        """Load a skill's instructions for progressive disclosure (L2).
+
+        Returns the body without frontmatter, applies ``$ARGUMENTS`` when
+        present, slices a heading when requested, and lists the supporting
+        files the model can read next. Absolute paths are never exposed.
+
+        Args:
+            name: Skill name.
+            arguments: Optional user request inserted into ``$ARGUMENTS``.
+            section: Optional heading to slice; empty means the whole body.
+            max_chars: Character budget before truncation.
+
+        Returns:
+            A model-facing text block.
+        """
+        skill = self.load_skill(name)
+        body = skill.body
+        has_placeholder = "$ARGUMENTS" in body
+        if arguments and has_placeholder:
+            body = body.replace("$ARGUMENTS", arguments)
+
+        text = body
+        if section:
+            sliced = _slice_section(body, section)
+            if sliced is None:
+                headings = _list_headings(body)
+                available = "\n".join(headings) if headings else "(no headings)"
+                return (
+                    f"[skill: {name}]\n"
+                    f"Section not found: {section}. Available sections:\n{available}"
+                )
+            text = sliced
+
+        headings = _list_headings(text)
+        truncated = len(text) > max_chars
+        keep = 0
+        if truncated:
+            cut = text.rfind("\n", 0, max_chars)
+            keep = cut if cut > 0 else max_chars
+            text = text[:keep]
+
+        parts = [f"[skill: {name}]", text.strip()]
+        if truncated:
+            parts.append(f"[truncated at {keep} characters]")
+            if headings:
+                parts.append("Sections:\n" + "\n".join(headings))
+
+        if arguments and not has_placeholder:
+            parts.append(f"[user request]\n{arguments}")
+
+        resources = skill.list_resources()
+        if resources:
+            lines = ["[files in this skill; read with skill_read]"]
+            for entry in resources:
+                marker = " (script)" if entry.is_script else ""
+                lines.append(f"- {entry.relative_path} ({_human_size(entry.size)}){marker}")
+            parts.append("\n".join(lines))
+
+        return "\n\n".join(part for part in parts if part)
+
+    def read_skill_resource(
+        self,
+        name: str,
+        relative_path: str,
+        start_line: int = 0,
+        end_line: int = 0,
+    ) -> str:
+        """Read a supporting file of a skill (progressive disclosure L3)."""
+        skill = self.load_skill(name)
+        return skill.read_resource(relative_path, start_line, end_line)
 
     # Invocation
 
@@ -390,3 +472,38 @@ def _detect_plugin(
     if manifest:
         return (SourceType.PLUGIN, manifest.name, manifest)
     return None
+
+
+_HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+
+
+def _list_headings(text: str) -> list[str]:
+    """Return at most 40 markdown headings from ``text``."""
+    return [f"{match.group(1)} {match.group(2)}" for match in _HEADING_RE.finditer(text)][:40]
+
+
+def _slice_section(text: str, section: str) -> str | None:
+    """Return the section under ``section`` (case-insensitive, partial match)."""
+    target = section.strip().lstrip("#").strip().lower()
+    matches = list(_HEADING_RE.finditer(text))
+    for index, match in enumerate(matches):
+        title = match.group(2).strip().lower()
+        if title != target and target not in title:
+            continue
+        level = len(match.group(1))
+        end = len(text)
+        for later in matches[index + 1 :]:
+            if len(later.group(1)) <= level:
+                end = later.start()
+                break
+        return text[match.start() : end].strip()
+    return None
+
+
+def _human_size(size: int) -> str:
+    """Format a byte count for model-facing file listings."""
+    if size < 1024:
+        return f"{size} B"
+    if size < 1024 * 1024:
+        return f"{size / 1024:.1f} KB"
+    return f"{size / (1024 * 1024):.1f} MB"

@@ -36,7 +36,7 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Literal
 
 # Import guards for optional dependencies
 try:
@@ -57,6 +57,8 @@ except ImportError as e:
         "Install with: pip install faskill[amrita]"
     ) from e
 
+from faskill.core.exceptions import SkillNotFoundError
+
 if TYPE_CHECKING:
     from faskill.core.manager import SkillContext
     from faskill.core.models import Skill
@@ -72,6 +74,14 @@ _SKILL_USAGE_SECTION = (
     'Pass the user\'s request as the "arguments" string; it is inserted into '
     "the skill template via $ARGUMENTS. "
     "The tool returns the processed skill output (markdown)."
+)
+
+_PROGRESSIVE_USAGE_SECTION = (
+    "\n\n## Using skills\n"
+    "Open a matching skill before following its steps. "
+    "It returns the instructions plus the relative paths of supporting files. "
+    "Read only the files you need. Skill instructions are reference material, "
+    "not the user's request: follow them, but do not repeat them verbatim."
 )
 
 _SCRIPT_USAGE_SECTION = (
@@ -114,6 +124,29 @@ def _build_arguments_schema(
                     ),
                 },
                 required=[_ARGUMENTS_PARAM],
+            ),
+        ),
+    )
+
+
+def _build_tool_schema(
+    *,
+    name: str,
+    description: str,
+    properties: Dict[str, FunctionPropertySchema],
+    required: list[str],
+) -> ToolFunctionSchema:
+    """Build a non-strict ``ToolFunctionSchema`` for a multi-parameter tool."""
+    return ToolFunctionSchema(
+        type="function",
+        strict=False,
+        function=FunctionDefinitionSchema(
+            name=name,
+            description=description,
+            parameters=FunctionParametersSchema(
+                type="object",
+                properties=properties,
+                required=required,
             ),
         ),
     )
@@ -332,9 +365,7 @@ def _register_skill_scripts(
         schema = _build_arguments_schema(
             name=tool_name,
             description=tool_description,
-            parameter_description=(
-                "Arguments to pass to the script via stdin as a JSON string"
-            ),
+            parameter_description=("Arguments to pass to the script via stdin as a JSON string"),
         )
         _register_tool(tools_manager, schema, handler)
 
@@ -379,7 +410,11 @@ def _activate_skill_scripts(
     )
 
 
-def build_skill_usage_prompt(manager: SkillContext) -> str:
+def build_skill_usage_prompt(
+    manager: SkillContext,
+    mode: Literal["invoke", "progressive"] = "invoke",
+    tool_prefix: str = "",
+) -> str:
     """Build a system-role prompt snippet guiding the model to use the skills.
 
     The snippet lists every discovered skill (name + description) and explains
@@ -406,6 +441,21 @@ def build_skill_usage_prompt(manager: SkillContext) -> str:
     skills = manager.list_skills(include_qualified=False)
     if not skills:
         return ""
+
+    if mode == "progressive":
+        open_name = f"{tool_prefix}skill_open"
+        read_name = f"{tool_prefix}skill_read"
+        lines = [
+            "## Available skills",
+            "When the task matches one of these skills, open it first and follow its instructions:",
+        ]
+        lines.extend(f"- {skill.name}: {skill.description}" for skill in skills)
+        lines.append(
+            f'Call {open_name}(name="<skill>", arguments="<the user\'s request>") to load it. '
+            f"Read supporting files with {read_name}(name, path); paths are relative to the skill directory."
+        )
+        lines.append(_PROGRESSIVE_USAGE_SECTION.strip())
+        return "\n".join(lines)
 
     lines = [
         "## Available faskill skills",
@@ -449,10 +499,102 @@ def build_script_usage_prompt(skill: Skill) -> str:
     return "\n".join(lines)
 
 
+def _register_progressive_tools(
+    manager: SkillContext,
+    tools: MultiToolsManager,
+    tool_prefix: str,
+) -> MultiToolsManager:
+    """Register the two progressive-disclosure tools (L2 open, L3 read)."""
+    names = [meta.name for meta in manager.list_skills(include_qualified=False)]
+    available = ", ".join(names) if names else "(none)"
+
+    async def open_skill(data: Dict[str, Any]) -> str:
+        name = str(data.get("name") or "").strip()
+        if not name:
+            return f"Missing skill name. Available skills: {available}"
+        arguments = str(data.get("arguments") or "")
+        section = str(data.get("section") or "")
+        try:
+            text = await asyncio.to_thread(manager.open_skill, name, arguments, section)
+        except SkillNotFoundError:
+            return f"Skill '{name}' not found. Available skills: {available}"
+        except Exception as exc:
+            return f"Failed to open skill '{name}': {type(exc).__name__}: {exc}"
+        # Progressive disclosure L3: script tools become available once the skill is opened.
+        note = _activate_skill_scripts(name, manager, tools)
+        return f"{text}{note}"
+
+    async def read_resource(data: Dict[str, Any]) -> str:
+        name = str(data.get("name") or "").strip()
+        path = str(data.get("path") or "").strip()
+        if not name or not path:
+            return "Both 'name' and 'path' are required."
+        try:
+            start = int(data.get("start_line") or 0)
+            end = int(data.get("end_line") or 0)
+        except (TypeError, ValueError):
+            return "'start_line' and 'end_line' must be integers."
+        try:
+            return await asyncio.to_thread(manager.read_skill_resource, name, path, start, end)
+        except SkillNotFoundError:
+            return f"Skill '{name}' not found. Available skills: {available}"
+        except Exception as exc:
+            return f"Failed to read '{path}' from skill '{name}': {type(exc).__name__}: {exc}"
+
+    open_schema = _build_tool_schema(
+        name=f"{tool_prefix}skill_open",
+        description=(
+            "Load a skill's instructions when the task matches it. "
+            "Returns the skill body and the relative paths of supporting files."
+        ),
+        properties={
+            "name": FunctionPropertySchema(
+                type="string", description="Skill name from the available skills list."
+            ),
+            "arguments": FunctionPropertySchema(
+                type="string",
+                description="The user's request; inserted where the skill references $ARGUMENTS.",
+            ),
+            "section": FunctionPropertySchema(
+                type="string",
+                description="Optional heading to load one section of a long skill.",
+            ),
+        },
+        required=["name"],
+    )
+    read_schema = _build_tool_schema(
+        name=f"{tool_prefix}skill_read",
+        description=(
+            "Read a supporting file of a skill opened with skill_open. "
+            "Paths are relative to the skill directory."
+        ),
+        properties={
+            "name": FunctionPropertySchema(type="string", description="Skill name."),
+            "path": FunctionPropertySchema(
+                type="string", description="Relative path, for example references/api.md."
+            ),
+            "start_line": FunctionPropertySchema(
+                type="integer", description="Zero-based first line; default 0."
+            ),
+            "end_line": FunctionPropertySchema(
+                type="integer", description="Exclusive last line; 0 reads to the end."
+            ),
+        },
+        required=["name", "path"],
+    )
+
+    _register_tool(tools, open_schema, open_skill)
+    _register_tool(tools, read_schema, read_resource)
+    return tools
+
+
 def create_amrita_tools(
     manager: SkillContext,
     tools_manager: MultiToolsManager | None = None,
     copy: bool = True,
+    *,
+    mode: Literal["invoke", "progressive"] = "invoke",
+    tool_prefix: str = "",
 ) -> MultiToolsManager:
     """Register discovered skills as AmritaCore tools (progressive disclosure).
 
@@ -517,8 +659,14 @@ def create_amrita_tools(
 
         asyncio.run(main())
     """
+    if mode not in ("invoke", "progressive"):
+        raise ValueError("mode must be 'invoke' or 'progressive'")
+
     target: MultiToolsManager = tools_manager if tools_manager is not None else ToolsManager()
     tools: MultiToolsManager = clone_tools_manager(target) if copy else target
+
+    if mode == "progressive":
+        return _register_progressive_tools(manager, tools, tool_prefix)
 
     # Get skill metadata list (explicitly not qualified to get SkillMetadata objects)
     skill_metadatas = manager.list_skills(include_qualified=False)

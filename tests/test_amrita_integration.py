@@ -173,8 +173,8 @@ async def test_amrita_tool_invocation_with_arguments(temp_skills_dir, skill_fact
     assert isinstance(result, str)
 
     assert "Hello World!" in result
-    assert "Base directory for this skill:" in result
-    assert str(temp_skills_dir / "greeter") in result
+    assert "Supporting files for this skill are resolved relative to the skill directory." in result
+    assert str(temp_skills_dir / "greeter") not in result
 
 
 @pytest.mark.integration

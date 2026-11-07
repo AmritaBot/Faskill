@@ -303,6 +303,31 @@ class SkillMetadata:
 
 
 # Note: slots=True cannot be combined with cached_property, so Skill uses only frozen=True (memory impact is minimal since content dwarfs object overhead).
+@dataclass(frozen=True, slots=True)
+class ResourceEntry:
+    """A supporting file bundled with a skill.
+
+    Attributes:
+        relative_path: POSIX-style path relative to the skill directory.
+        size: File size in bytes.
+        is_script: True when the file is a detected executable script.
+    """
+
+    relative_path: str
+    size: int
+    is_script: bool = False
+
+
+def _strip_frontmatter(content: str) -> str:
+    """Return the markdown body of a SKILL.md file without its YAML frontmatter."""
+    from faskill.core.parser import SkillParser
+
+    match = SkillParser.FRONTMATTER_PATTERN.match(content)
+    if match is None:
+        return content.lstrip("\ufeff")
+    return content[match.end() :].lstrip("\r\n")
+
+
 @dataclass(frozen=True)
 class Skill:
     """Full skill with lazy-loaded content (Python 3.10+).
@@ -346,6 +371,16 @@ class Skill:
                 ]
             ),
         )
+
+    @cached_property
+    def body(self) -> str:
+        """SKILL.md body with the YAML frontmatter removed.
+
+        Frontmatter is discovery metadata and must not reach the model as
+        instructions. ``content`` keeps exposing the raw file for callers
+        that need it.
+        """
+        return _strip_frontmatter(self.content)
 
     @cached_property
     def content(self) -> str:
@@ -445,7 +480,7 @@ class Skill:
             "base_directory": str(self.base_directory),
             "skill_name": self.metadata.name,
         }
-        return self._processor.process(self.content, context)
+        return self._processor.process(self.body, context)
 
     async def ainvoke(self, arguments: str = "") -> str:
         """Async version of invoke() for non-blocking skill invocation.
@@ -474,11 +509,10 @@ class Skill:
         """
         # Check if content is already cached
         if "content" in self.__dict__:
-            # Content already loaded, use sync processing
-            content = self.content
+            raw = self.content
         else:
-            # Load content asynchronously
-            content = await self._load_content_async()
+            raw = await self._load_content_async()
+        content = _strip_frontmatter(raw)
 
         context = {
             "arguments": arguments,
@@ -486,6 +520,107 @@ class Skill:
             "skill_name": self.metadata.name,
         }
         return self._processor.process(content, context)
+
+    def list_resources(self, max_depth: int = 2) -> list["ResourceEntry"]:
+        """List supporting files bundled with this skill.
+
+        Hidden entries, ``__pycache__`` and ``SKILL.md`` itself are skipped so
+        the model only sees files it can actually read.
+
+        Args:
+            max_depth: Maximum path depth relative to the skill directory.
+
+        Returns:
+            Sorted list of :class:`ResourceEntry` objects.
+        """
+        base = self.base_directory
+        if not base.is_dir():
+            return []
+
+        script_paths = {(base / script.path).resolve() for script in self.scripts}
+        entries: list[ResourceEntry] = []
+        for path in base.rglob("*"):
+            if not path.is_file():
+                continue
+            relative = path.relative_to(base)
+            if len(relative.parts) > max_depth:
+                continue
+            if relative.as_posix() == "SKILL.md":
+                continue
+            if any(part.startswith(".") or part == "__pycache__" for part in relative.parts):
+                continue
+            try:
+                size = path.stat().st_size
+            except OSError:
+                continue
+            entries.append(
+                ResourceEntry(
+                    relative_path=relative.as_posix(),
+                    size=size,
+                    is_script=path.resolve() in script_paths,
+                )
+            )
+        return sorted(entries, key=lambda entry: entry.relative_path)
+
+    def read_resource(
+        self,
+        relative_path: str,
+        start_line: int = 0,
+        end_line: int = 0,
+        *,
+        max_bytes: int = 32768,
+    ) -> str:
+        """Read a supporting file inside the skill directory.
+
+        Args:
+            relative_path: Path relative to the skill directory.
+            start_line: Zero-based first line to return.
+            end_line: Exclusive last line; 0 means "until the end".
+            max_bytes: Hard cap on the returned text size.
+
+        Returns:
+            The requested text, with a continuation hint when truncated.
+
+        Raises:
+            PathSecurityError: If the path escapes the skill directory.
+            ContentLoadError: If the file is missing or binary.
+        """
+        from faskill.core.exceptions import ContentLoadError
+        from faskill.core.path_resolver import FilePathResolver
+
+        path = FilePathResolver.resolve_path(self.base_directory, relative_path)
+        if not path.is_file():
+            raise ContentLoadError(f"Resource not found: {relative_path}")
+
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            raise ContentLoadError(f"Cannot read resource: {relative_path}") from exc
+
+        if b"\x00" in raw[:8192]:
+            raise ContentLoadError(
+                f"Resource is binary and cannot be read as text: {relative_path}"
+            )
+
+        lines = raw.decode("utf-8-sig", errors="replace").splitlines()
+        total = len(lines)
+        start = max(start_line, 0)
+        if start >= total:
+            return f"(no content at line {start}; file has {total} lines)"
+
+        stop = total if end_line <= 0 else min(end_line, total)
+        chunk = "\n".join(lines[start:stop])
+
+        encoded = chunk.encode("utf-8")
+        if len(encoded) > max_bytes:
+            chunk = encoded[:max_bytes].decode("utf-8", errors="ignore")
+            return (
+                f"{chunk}\n\n[truncated at {max_bytes} bytes; "
+                f"{total} lines total, continue with start_line={stop}]"
+            )
+        if stop < total:
+            return f"{chunk}\n\n[lines {start}-{stop} of {total}; continue with start_line={stop}]"
+        return chunk
 
     @property
     def scripts(self) -> "list[ScriptMetadata]":
