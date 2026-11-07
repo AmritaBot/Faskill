@@ -621,8 +621,7 @@ class Skill:
         if _is_private_relative(relative):
             raise ContentLoadError(f"Resource not found: {relative_path}")
 
-        # Reserve room for the continuation hint so the result stays within
-        # ``max_bytes`` even when it is truncated.
+        # Reserve room for the continuation hint so the result stays within max_bytes.
         budget = max(max_bytes - 160, 1)
         start = max(start_line, 0)
         stop = end_line if end_line > 0 else None

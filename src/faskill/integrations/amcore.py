@@ -384,9 +384,7 @@ def _register_skill_scripts(
         )
         pending.append((schema, handler))
 
-    # Build every schema before touching the pool: an invalid tool ID then
-    # leaves it untouched instead of half-populated. Registration itself is
-    # rolled back for the same reason.
+    # Build every schema before touching the pool; roll back on failure.
     registered: list[str] = []
     try:
         for schema, handler in pending:
@@ -570,8 +568,7 @@ def _register_progressive_tools(
     names = [meta.name for meta in manager.list_skills(include_qualified=False)]
     available = ", ".join(names) if names else "(none)"
 
-    # The prompt names these two tools verbatim, so a collision must fail loudly
-    # instead of leaving an unrelated handler under the advertised name.
+    # The prompt names these tools verbatim, so a collision must fail loudly.
     for tool_name in (f"{tool_prefix}skill_open", f"{tool_prefix}skill_read"):
         if tools.has_tool(tool_name):
             raise ConfigurationError(
@@ -723,9 +720,7 @@ def create_amrita_tools(
             ctx = create_context(skill_dirs=["./skills"])
             ctx.discover()
 
-            # Registered onto a clone of the global ToolsManager — the global
-            # singleton stays clean.  AmritaCore 1.0 resolves tools through the
-            # backend, so wire the clone in with create_amrita_backend().
+            # Registered onto a clone; wire it in through create_amrita_backend().
             tools = create_amrita_tools(ctx)
             agent = create_agent(
                 ...,
