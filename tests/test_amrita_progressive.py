@@ -61,6 +61,7 @@ async def test_open_returns_body_and_file_list(temp_skills_dir, skill_factory):
     tools = create_amrita_tools(manager, mode="progressive")
 
     handler = tools.get_tool_func("skill_open")
+    assert handler is not None
     result = await handler({"name": "pdf-tools", "arguments": "merge two files"})  # pyright: ignore[reportArgumentType]
 
     assert isinstance(result, str)
@@ -76,11 +77,14 @@ async def test_open_section_and_unknown_skill(temp_skills_dir, skill_factory):
     manager = _context(temp_skills_dir, skill_factory)
     tools = create_amrita_tools(manager, mode="progressive")
     handler = tools.get_tool_func("skill_open")
+    assert handler is not None
 
     section = await handler({"name": "pdf-tools", "section": "Workflow"})  # pyright: ignore[reportArgumentType]
+    assert isinstance(section, str)
     assert "Step one." in section
 
     missing = await handler({"name": "nope"})  # pyright: ignore[reportArgumentType]
+    assert isinstance(missing, str)
     assert "not found" in missing
     assert "pdf-tools" in missing
 
@@ -91,11 +95,14 @@ async def test_read_resource(temp_skills_dir, skill_factory):
     manager = _context(temp_skills_dir, skill_factory)
     tools = create_amrita_tools(manager, mode="progressive")
     handler = tools.get_tool_func("skill_read")
+    assert handler is not None
 
     result = await handler({"name": "pdf-tools", "path": "references/api.md"})  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
     assert "reference line one" in result
 
     traversal = await handler({"name": "pdf-tools", "path": "../../etc/passwd"})  # pyright: ignore[reportArgumentType]
+    assert isinstance(traversal, str)
     assert "Failed to read" in traversal
 
 
