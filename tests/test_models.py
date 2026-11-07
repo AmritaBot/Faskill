@@ -185,5 +185,6 @@ def test_skill_invocation_basic(fixtures_dir, tmp_path):
 
     assert result is not None
     assert isinstance(result, str)
-    # Should contain base directory injection
-    assert str(tmp_path) in result or "BASE_DIRECTORY" in result
+    # The resolution hint must not leak the absolute path
+    assert str(tmp_path) not in result
+    assert "resolved relative to the skill directory" in result

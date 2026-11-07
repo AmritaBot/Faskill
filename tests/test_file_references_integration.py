@@ -120,10 +120,12 @@ class TestFileReferencesIntegration:
         result = manager.invoke_skill("file-reference-skill", "test arguments")
 
         # Verify
-        assert "Base directory for this skill:" in result
+        assert (
+            "Supporting files for this skill are resolved relative to the skill directory."
+            in result
+        )
         assert "file-reference-skill" in result
-        assert "FilePathResolver.resolve_path" in result
-        assert "securely access files" in result
+        assert str(example_skills_dir) not in result
 
     def test_skill_invocation_includes_file_resolution_helper(self, example_skills_dir: Path):
         """Test that skill invocation includes file path resolution helper."""
@@ -135,10 +137,11 @@ class TestFileReferencesIntegration:
         result = manager.invoke_skill("file-reference-skill", "test")
 
         # Verify
-        assert "Supporting files can be referenced using relative paths" in result
-        assert "FilePathResolver.resolve_path" in result
-        assert "base_dir" in result
-        assert "relative_path" in result
+        assert (
+            "Supporting files for this skill are resolved relative to the skill directory."
+            in result
+        )
+        assert str(example_skills_dir) not in result
 
     def test_security_prevents_traversal_in_real_skill(self, file_reference_skill_dir: Path):
         """Test that path traversal is prevented in real skill directory."""

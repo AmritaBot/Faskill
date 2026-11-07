@@ -303,6 +303,43 @@ class SkillMetadata:
 
 
 # Note: slots=True cannot be combined with cached_property, so Skill uses only frozen=True (memory impact is minimal since content dwarfs object overhead).
+@dataclass(frozen=True, slots=True)
+class ResourceEntry:
+    """A supporting file bundled with a skill.
+
+    Attributes:
+        relative_path: POSIX-style path relative to the skill directory.
+        size: File size in bytes.
+        is_script: True when the file is a detected executable script.
+    """
+
+    relative_path: str
+    size: int
+    is_script: bool = False
+
+
+def _is_private_relative(relative: Path) -> bool:
+    """Whether a skill-relative path must stay out of the model's view.
+
+    ``SKILL.md`` is matched case-insensitively so a case variant cannot leak
+    the frontmatter, and any dotted path component or ``__pycache__`` is
+    treated as internal.
+    """
+    if relative.as_posix().casefold() == "skill.md":
+        return True
+    return any(part.startswith(".") or part == "__pycache__" for part in relative.parts)
+
+
+def _strip_frontmatter(content: str) -> str:
+    """Return the markdown body of a SKILL.md file without its YAML frontmatter."""
+    from faskill.core.parser import SkillParser
+
+    match = SkillParser.FRONTMATTER_PATTERN.match(content)
+    if match is None:
+        return content.lstrip("\ufeff")
+    return content[match.end() :].lstrip("\r\n")
+
+
 @dataclass(frozen=True)
 class Skill:
     """Full skill with lazy-loaded content (Python 3.10+).
@@ -346,6 +383,16 @@ class Skill:
                 ]
             ),
         )
+
+    @cached_property
+    def body(self) -> str:
+        """SKILL.md body with the YAML frontmatter removed.
+
+        Frontmatter is discovery metadata and must not reach the model as
+        instructions. ``content`` keeps exposing the raw file for callers
+        that need it.
+        """
+        return _strip_frontmatter(self.content)
 
     @cached_property
     def content(self) -> str:
@@ -445,7 +492,7 @@ class Skill:
             "base_directory": str(self.base_directory),
             "skill_name": self.metadata.name,
         }
-        return self._processor.process(self.content, context)
+        return self._processor.process(self.body, context)
 
     async def ainvoke(self, arguments: str = "") -> str:
         """Async version of invoke() for non-blocking skill invocation.
@@ -474,11 +521,10 @@ class Skill:
         """
         # Check if content is already cached
         if "content" in self.__dict__:
-            # Content already loaded, use sync processing
-            content = self.content
+            raw = self.content
         else:
-            # Load content asynchronously
-            content = await self._load_content_async()
+            raw = await self._load_content_async()
+        content = _strip_frontmatter(raw)
 
         context = {
             "arguments": arguments,
@@ -486,6 +532,158 @@ class Skill:
             "skill_name": self.metadata.name,
         }
         return self._processor.process(content, context)
+
+    def list_resources(self, max_depth: int = 2) -> list["ResourceEntry"]:
+        """List supporting files bundled with this skill.
+
+        Hidden entries, ``__pycache__`` and ``SKILL.md`` itself are skipped so
+        the model only sees files it can actually read. A file symlink whose
+        target leaves the skill directory is skipped as well, because
+        :meth:`read_resource` would refuse it.
+
+        Args:
+            max_depth: Maximum path depth relative to the skill directory.
+
+        Returns:
+            Sorted list of :class:`ResourceEntry` objects.
+        """
+        base = self.base_directory
+        if not base.is_dir():
+            return []
+
+        root = base.resolve()
+        script_paths = {(base / script.path).resolve() for script in self.scripts}
+        entries: list[ResourceEntry] = []
+        for path in base.rglob("*"):
+            if not path.is_file():
+                continue
+            relative = path.relative_to(base)
+            if len(relative.parts) > max_depth or _is_private_relative(relative):
+                continue
+            try:
+                resolved = path.resolve()
+                if not resolved.is_relative_to(root):
+                    continue
+                size = resolved.stat().st_size
+            except OSError:
+                continue
+            entries.append(
+                ResourceEntry(
+                    relative_path=relative.as_posix(),
+                    size=size,
+                    is_script=resolved in script_paths,
+                )
+            )
+        return sorted(entries, key=lambda entry: entry.relative_path)
+
+    def read_resource(
+        self,
+        relative_path: str,
+        start_line: int = 0,
+        end_line: int = 0,
+        *,
+        max_bytes: int = 32768,
+        start_char: int = 0,
+    ) -> str:
+        """Read a supporting file inside the skill directory.
+
+        The file is streamed line by line, so a large resource never has to fit
+        in memory at once. Reads stop at a line boundary once the byte budget is
+        spent; a single line longer than the budget is cut inside the line and
+        the hint names ``start_char`` so the rest can be resumed.
+
+        Args:
+            relative_path: Path relative to the skill directory.
+            start_line: Zero-based first line to return.
+            end_line: Exclusive last line; 0 means "until the end".
+            max_bytes: Hard cap on the returned text size.
+            start_char: Character offset inside ``start_line`` to resume from.
+
+        Returns:
+            The requested text, with a continuation hint when truncated.
+
+        Raises:
+            PathSecurityError: If the path escapes the skill directory.
+            ContentLoadError: If the file is missing, private or binary.
+        """
+        from faskill.core.exceptions import ContentLoadError
+        from faskill.core.path_resolver import FilePathResolver
+
+        path = FilePathResolver.resolve_path(self.base_directory, relative_path)
+        if not path.is_file():
+            raise ContentLoadError(f"Resource not found: {relative_path}")
+
+        root = self.base_directory.resolve()
+        try:
+            relative = path.resolve().relative_to(root)
+        except ValueError as exc:
+            raise ContentLoadError(f"Resource not found: {relative_path}") from exc
+        if _is_private_relative(relative):
+            raise ContentLoadError(f"Resource not found: {relative_path}")
+
+        # Reserve room for the continuation hint so the result stays within max_bytes.
+        budget = max(max_bytes - 160, 1)
+        start = max(start_line, 0)
+        stop = end_line if end_line > 0 else None
+        offset = max(start_char, 0)
+
+        collected: list[str] = []
+        used = 0
+        total = 0
+        resume: tuple[int, int | None] | None = None
+        reached_end = False
+
+        try:
+            with path.open("r", encoding="utf-8-sig", errors="strict", newline="") as handle:
+                for index, raw_line in enumerate(handle):
+                    total = index + 1
+                    line = raw_line.rstrip("\n").rstrip("\r")
+                    if "\x00" in line:
+                        raise ContentLoadError(
+                            f"Resource is binary and cannot be read as text: {relative_path}"
+                        )
+                    if resume is not None or reached_end:
+                        continue
+                    if index < start:
+                        continue
+                    if stop is not None and index >= stop:
+                        reached_end = True
+                        continue
+                    if index == start and offset:
+                        line = line[offset:]
+                    cost = len(line.encode("utf-8")) + 1
+                    if used + cost > budget:
+                        room = max(budget - used - 1, 0)
+                        if not collected and room > 0:
+                            head = line.encode("utf-8")[:room].decode("utf-8", errors="ignore")
+                            collected.append(head)
+                            resume = (index, offset + len(head))
+                        else:
+                            resume = (index, offset if index == start else None)
+                        continue
+                    collected.append(line)
+                    used += cost
+        except UnicodeDecodeError as exc:
+            raise ContentLoadError(f"Resource is not valid UTF-8 text: {relative_path}") from exc
+
+        body = "\n".join(collected)
+        if resume is not None:
+            line_index, char_index = resume
+            hint = f"continue with start_line={line_index}"
+            if char_index is not None:
+                hint += f", start_char={char_index}"
+            note = f"[truncated at {budget} bytes; {hint}]"
+            return f"{body}\n\n{note}" if body else note
+        if reached_end:
+            last = start + len(collected) - 1
+            note = (
+                f"[lines {start}-{last} of {total}; "
+                f"continue with start_line={start + len(collected)}]"
+            )
+            return f"{body}\n\n{note}" if body else note
+        if not collected:
+            return f"(no content at line {start}; file has {total} lines)"
+        return body
 
     @property
     def scripts(self) -> "list[ScriptMetadata]":

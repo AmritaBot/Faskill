@@ -17,7 +17,7 @@ from pathlib import Path
 import aiofiles
 import aiofiles.os
 
-from faskill.core.models import ContentCache, Skill
+from faskill.core.models import ContentCache, Skill, _strip_frontmatter
 from faskill.core.processors import normalize_arguments, process_skill_content
 
 logger = logging.getLogger(__name__)
@@ -95,7 +95,9 @@ class SkillInvoker:
             except UnicodeDecodeError as e:
                 raise ContentLoadError(f"Skill file contains invalid UTF-8: {file_path}") from e
 
-            processed = process_skill_content(raw_content, skill.base_directory, arguments)
+            processed = process_skill_content(
+                _strip_frontmatter(raw_content), skill.base_directory, arguments
+            )
             await self._cache.put(skill.metadata.name, normalized_args, processed, current_mtime)
             return processed
 
@@ -145,7 +147,9 @@ class SkillInvoker:
         except UnicodeDecodeError as e:
             raise ContentLoadError(f"Skill file contains invalid UTF-8: {file_path}") from e
 
-        processed = process_skill_content(raw_content, skill.base_directory, arguments)
+        processed = process_skill_content(
+            _strip_frontmatter(raw_content), skill.base_directory, arguments
+        )
         self._cache.put_sync(metadata.name, normalized_args, processed, current_mtime)
         return processed
 

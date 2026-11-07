@@ -9,6 +9,7 @@ SkillParser, and ScriptExecutor.
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Literal, overload
 
@@ -28,6 +29,7 @@ from faskill.core.models import (
     SourceType,
 )
 from faskill.core.parser import SkillParser
+from faskill.core.processors import apply_arguments
 from faskill.core.registry import SkillRegistry
 
 logger = logging.getLogger(__name__)
@@ -199,6 +201,100 @@ class SkillContext:
         metadata = self.get_skill(name)
         return Skill(metadata=metadata, base_directory=metadata.skill_path.parent)
 
+    # Progressive disclosure
+
+    def open_skill(
+        self,
+        name: str,
+        arguments: str = "",
+        section: str = "",
+        *,
+        max_chars: int = 12000,
+    ) -> str:
+        """Load a skill's instructions for progressive disclosure (L2).
+
+        Returns the body without frontmatter, applies ``$ARGUMENTS`` when
+        present, slices a heading when requested, and lists the supporting
+        files the model can read next. Absolute paths are never exposed.
+
+        Args:
+            name: Skill name.
+            arguments: Optional user request inserted into ``$ARGUMENTS``.
+            section: Optional heading to slice; empty means the whole body.
+            max_chars: Character budget before truncation.
+
+        Returns:
+            A model-facing text block.
+        """
+        skill = self.load_skill(name)
+        body = apply_arguments(skill.body, arguments, append_label="[user request]")
+
+        text = body
+        if section:
+            sliced = _slice_section(body, section)
+            if sliced is None:
+                headings = _list_headings(body)
+                available = "\n".join(headings) if headings else "(no headings)"
+                return (
+                    f"[skill: {name}]\n"
+                    f"Section not found: {section}. Available sections:\n{available}"
+                )
+            text = sliced
+
+        headings = _list_headings(text)
+        truncated = len(text) > max_chars
+        keep = 0
+        if truncated:
+            cut = text.rfind("\n", 0, max_chars)
+            keep = cut if cut > 0 else max_chars
+            text = text[:keep]
+
+        parts = [f"[skill: {name}]", text.strip()]
+        if truncated:
+            parts.append(f"[truncated at {keep} characters]")
+            if headings:
+                parts.append("Sections:\n" + "\n".join(headings))
+
+        resources = skill.list_resources()
+        if resources:
+            header = "[files in this skill; read with skill_read]"
+            entries = [
+                f"- {entry.relative_path} ({_human_size(entry.size)})"
+                + (" (script)" if entry.is_script else "")
+                for entry in resources
+            ]
+            used = sum(len(part) for part in parts) + len(header)
+            listing: list[str] = []
+            if used <= max_chars:
+                for entry in entries:
+                    if used + len(entry) + 1 > max_chars:
+                        break
+                    listing.append(entry)
+                    used += len(entry) + 1
+                block = "\n".join([header, *listing])
+                omitted = len(entries) - len(listing)
+                if omitted:
+                    block += f"\n[{omitted} more file(s) not listed]"
+                parts.append(block)
+            else:
+                parts.append(
+                    f"[{len(entries)} supporting files; listing omitted at the size limit]"
+                )
+
+        return "\n\n".join(part for part in parts if part)
+
+    def read_skill_resource(
+        self,
+        name: str,
+        relative_path: str,
+        start_line: int = 0,
+        end_line: int = 0,
+        start_char: int = 0,
+    ) -> str:
+        """Read a supporting file of a skill (progressive disclosure L3)."""
+        skill = self.load_skill(name)
+        return skill.read_resource(relative_path, start_line, end_line, start_char=start_char)
+
     # Invocation
 
     def invoke_skill(self, name: str, arguments: str = "") -> str:
@@ -322,7 +418,7 @@ class SkillContext:
 
     def _do_discover(self) -> None:
         logger.info("Starting skill discovery (sync)")
-        self._registry.clear()
+        registry = SkillRegistry()
         total = 0
 
         for src in self._sources:
@@ -334,13 +430,14 @@ class SkillContext:
             for sf in skill_files:
                 try:
                     metadata = self._parser.parse_skill_file(sf)
-                    if self._registry.register(metadata, src, self._sources):
+                    if registry.register(metadata, src, self._sources):
                         total += 1
                 except SkillsUseError as e:
                     logger.error("Failed to parse skill at %s: %s", sf, e, exc_info=True)
                 except Exception as e:
                     logger.error("Unexpected error parsing %s: %s", sf, e, exc_info=True)
 
+        self._registry = registry
         logger.info(
             "Discovery complete: %d skill(s) from %d source(s)",
             total,
@@ -349,7 +446,7 @@ class SkillContext:
 
     async def _ado_discover(self) -> None:
         logger.info("Starting skill discovery (async)")
-        self._registry.clear()
+        registry = SkillRegistry()
         total = 0
 
         for src in self._sources:
@@ -361,13 +458,14 @@ class SkillContext:
             for sf in skill_files:
                 try:
                     metadata = self._parser.parse_skill_file(sf)
-                    if self._registry.register(metadata, src, self._sources):
+                    if registry.register(metadata, src, self._sources):
                         total += 1
                 except SkillsUseError as e:
                     logger.error("Failed to parse skill at %s: %s", sf, e, exc_info=True)
                 except Exception as e:
                     logger.error("Unexpected error parsing %s: %s", sf, e, exc_info=True)
 
+        self._registry = registry
         logger.info(
             "Async discovery complete: %d skill(s) from %d source(s)",
             total,
@@ -390,3 +488,71 @@ def _detect_plugin(
     if manifest:
         return (SourceType.PLUGIN, manifest.name, manifest)
     return None
+
+
+_HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+_FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,}).*$", re.MULTILINE)
+
+
+def _fenced_spans(text: str) -> list[tuple[int, int]]:
+    """Character spans covered by fenced code blocks."""
+    spans: list[tuple[int, int]] = []
+    opened: int | None = None
+    for match in _FENCE_RE.finditer(text):
+        if opened is None:
+            opened = match.start()
+        else:
+            spans.append((opened, match.end()))
+            opened = None
+    if opened is not None:
+        spans.append((opened, len(text)))
+    return spans
+
+
+def _outside_fences(position: int, spans: list[tuple[int, int]]) -> bool:
+    """Whether a position is outside every fenced code block."""
+    return all(position < start or position >= end for start, end in spans)
+
+
+def _list_headings(text: str) -> list[str]:
+    """Return at most 40 markdown headings from ``text``.
+
+    Heading-shaped lines inside fenced code blocks are ignored, so an example
+    snippet does not show up as a real section.
+    """
+    spans = _fenced_spans(text)
+    return [
+        f"{match.group(1)} {match.group(2)}"
+        for match in _HEADING_RE.finditer(text)
+        if _outside_fences(match.start(), spans)
+    ][:40]
+
+
+def _slice_section(text: str, section: str) -> str | None:
+    """Return the section under ``section`` (case-insensitive, partial match)."""
+    target = section.strip().lstrip("#").strip().lower()
+    spans = _fenced_spans(text)
+    matches = [
+        match for match in _HEADING_RE.finditer(text) if _outside_fences(match.start(), spans)
+    ]
+    for index, match in enumerate(matches):
+        title = match.group(2).strip().lower()
+        if title != target and target not in title:
+            continue
+        level = len(match.group(1))
+        end = len(text)
+        for later in matches[index + 1 :]:
+            if len(later.group(1)) <= level:
+                end = later.start()
+                break
+        return text[match.start() : end].strip()
+    return None
+
+
+def _human_size(size: int) -> str:
+    """Format a byte count for model-facing file listings."""
+    if size < 1024:
+        return f"{size} B"
+    if size < 1024 * 1024:
+        return f"{size / 1024:.1f} KB"
+    return f"{size / (1024 * 1024):.1f} MB"

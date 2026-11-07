@@ -32,7 +32,7 @@ class TestAsyncSkillInvocation:
 
         # Verify result contains expected content
         assert isinstance(result, str)
-        assert "Base directory" in result
+        assert "resolved relative to the skill directory" in result
         assert "Format this **text**" in result
         assert len(result) > 0
 
@@ -45,7 +45,7 @@ class TestAsyncSkillInvocation:
         result = await skill.ainvoke()
 
         assert isinstance(result, str)
-        assert "Base directory" in result
+        assert "resolved relative to the skill directory" in result
         assert len(result) > 0
 
     @pytest.mark.asyncio
@@ -131,7 +131,7 @@ class TestAsyncManagerInvocation:
 
         assert isinstance(result, str)
         assert "Format **markdown**" in result
-        assert "Base directory" in result
+        assert "resolved relative to the skill directory" in result
 
     @pytest.mark.asyncio
     async def test_manager_ainvoke_skill_not_found(self, skill_manager_async):

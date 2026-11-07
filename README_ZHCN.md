@@ -36,6 +36,7 @@
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Bug 修复** | `PRIORITY_CUSTOM` 不再递减 — 5 个以上来源不会触发 `ValueError: Priority must be positive`                                                  |
 | **Bug 修复** | `create_langchain_tools()` 不再预加载所有脚本 — 遵循渐进式披露 (L1→L2→L3)                                                                  |
+| **新增**     | `create_amrita_tools(mode="progressive")` — 两个工具（`skill_open` / `skill_read`）替代每技能一个工具       |
 | **新增**     | `InvalidSkillNameError` — 含空格的名称会被拒绝（可通过 `NO_FAIL_ON_SPACE=1` 绕过）                                                         |
 | **新增**     | `Runner` 抽象层 — `HostRunner`（默认，单次警告裸机安全风险），支持替换后端                                                                 |
 | **新增**     | `ArgumentSerializationError` / `ArgumentSizeError` / `ToolIDValidationError` — 细粒度脚本异常                                              |

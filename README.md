@@ -36,6 +36,7 @@ This fork contains significant refactoring and bug fixes beyond the original:
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Bug fix**  | `PRIORITY_CUSTOM` no longer decrements — ≥5 sources won't trigger `ValueError: Priority must be positive`                                                 |
 | **Bug fix**  | `create_langchain_tools()` no longer eagerly loads all scripts — respects progressive disclosure (L1→L2→L3)                                               |
+| **New**      | `create_amrita_tools(mode="progressive")` — a two-tool pool (`skill_open` / `skill_read`) instead of one tool per skill       |
 | **New**      | `InvalidSkillNameError` — names with spaces are rejected (bypass with `NO_FAIL_ON_SPACE=1`)                                                               |
 | **New**      | `Runner` abstraction — `HostRunner` (default, warns once about bare host security) with swappable backends                                                |
 | **New**      | `ArgumentSerializationError` / `ArgumentSizeError` / `ToolIDValidationError` — fine-grained script errors                                                 |
@@ -282,7 +283,7 @@ See `examples/` directory:
 - **[Core Features](docs/core-features.md)** — multi-source discovery, caching, scripts, patterns
 - **[API Reference](docs/reference.md)** — SKILL.md spec, system requirements, development
 - **[LangChain Integration](docs/integration/langchain.md)** — sync/async, script tools, tool ID format
-- **[AmritaCore Integration](docs/integration/amrita.md)** — progressive disclosure, script tools on activation, tool pool hygiene
+- **[AmritaCore Integration](docs/integration/amrita.md)** — progressive disclosure, two-tool mode, script tools on activation, tool pool hygiene
 
 ---
 

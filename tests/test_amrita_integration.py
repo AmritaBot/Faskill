@@ -173,8 +173,8 @@ async def test_amrita_tool_invocation_with_arguments(temp_skills_dir, skill_fact
     assert isinstance(result, str)
 
     assert "Hello World!" in result
-    assert "Base directory for this skill:" in result
-    assert str(temp_skills_dir / "greeter") in result
+    assert "Supporting files for this skill are resolved relative to the skill directory." in result
+    assert str(temp_skills_dir / "greeter") not in result
 
 
 @pytest.mark.integration
@@ -294,8 +294,8 @@ def test_build_skill_usage_prompt(isolated_manager, skill_factory):
 
     prompt = build_skill_usage_prompt(isolated_manager)
 
-    assert "code-reviewer: Reviews code quality" in prompt
-    assert "test-generator: Generates unit tests" in prompt
+    assert '<skill name="code-reviewer">Reviews code quality</skill>' in prompt
+    assert '<skill name="test-generator">Generates unit tests</skill>' in prompt
     assert "$ARGUMENTS" in prompt
     assert "## Available faskill skills" in prompt
 

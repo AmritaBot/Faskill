@@ -68,6 +68,45 @@ def normalize_arguments(arguments: str | None) -> str:
     return normalized
 
 
+def apply_arguments(
+    content: str,
+    arguments: str | None,
+    *,
+    append_label: str = "ARGUMENTS",
+) -> str:
+    """Apply ``$ARGUMENTS`` substitution with the shared size limit.
+
+    ``$$ARGUMENTS`` escapes to a literal ``$ARGUMENTS``, so a skill can show
+    the token in its instructions. An empty argument still replaces a present
+    placeholder, which keeps the raw token out of the model's view.
+
+    Args:
+        content: Skill body, without frontmatter.
+        arguments: User request; ``None`` means "no substitution at all".
+        append_label: Heading used when the body has no placeholder.
+
+    Returns:
+        The content with arguments applied.
+
+    Raises:
+        SizeLimitExceededError: If the arguments exceed 1MB.
+    """
+    if arguments is not None and len(arguments.encode("utf-8")) > 1_000_000:
+        raise SizeLimitExceededError("Arguments exceed maximum size of 1000000 bytes")
+
+    if arguments is None:
+        return content
+
+    if "$ARGUMENTS" in content:
+        escaped = content.replace("$$ARGUMENTS", "\x00ARGUMENTS_ESCAPE\x00")
+        escaped = escaped.replace("$ARGUMENTS", arguments)
+        return escaped.replace("\x00ARGUMENTS_ESCAPE\x00", "$ARGUMENTS")
+
+    if arguments:
+        return f"{content}\n\n{append_label}: {arguments}"
+    return content
+
+
 def process_skill_content(
     content: str,
     base_dir: Path,
@@ -113,31 +152,15 @@ def process_skill_content(
         - ~1-5ms per invocation (dominated by string operations)
         - No file I/O, pure in-memory processing
     """
-    # 1. Validate argument size (1MB limit)
-    if arguments is not None and len(arguments.encode("utf-8")) > 1_000_000:
-        raise SizeLimitExceededError("Arguments exceed maximum size of 1000000 bytes")
+    # Kept for callers that pass it positionally.
+    del base_dir
 
-    # 2. Prepend base directory context
-    result = f"Base directory for this skill: {base_dir}\n\n"
-    result += "Supporting files can be referenced using relative paths from this base directory.\n"
-    result += (
-        "Use FilePathResolver.resolve_path(base_dir, relative_path) to securely access files.\n\n"
-    )
+    # 1. Prepend a path-free resolution hint
+    result = "Supporting files for this skill are resolved relative to the skill directory.\n\n"
     result += content
 
-    # 3. Handle arguments
-    if arguments is None:
-        return result  # No arguments provided
-
-    if "$ARGUMENTS" in result:
-        # Replace all $ARGUMENTS placeholders (including empty string)
-        return result.replace("$ARGUMENTS", arguments)
-    elif arguments:  # Non-empty after normalization
-        # Append arguments
-        return f"{result}\n\nARGUMENTS: {arguments}"
-    else:
-        # Empty arguments, no placeholder
-        return result
+    # 2. Apply arguments through the shared helper (size limit included)
+    return apply_arguments(result, arguments)
 
 
 class ContentProcessor(ABC):
@@ -164,7 +187,7 @@ class BaseDirectoryProcessor(ContentProcessor):
     """Injects base directory context and file path resolution helper at beginning of content."""
 
     def process(self, content: str, context: Dict[str, Any]) -> str:
-        """Inject base directory and file path resolution helper at beginning of content.
+        """Inject a relative-path resolution hint at the beginning of the content.
 
         Args:
             content: Raw skill content
@@ -185,14 +208,9 @@ class BaseDirectoryProcessor(ContentProcessor):
 
             # My Skill
         """
-        base_dir = context.get("base_directory", "")
-
-        # Build header with base directory and file resolution helper
-        header = f"Base directory for this skill: {base_dir}\n\n"
-        header += (
-            "Supporting files can be referenced using relative paths from this base directory.\n"
-        )
-        header += "Use FilePathResolver.resolve_path(base_dir, relative_path) to securely access files.\n\n"
+        # Path-free header; the context argument is unused here.
+        del context
+        header = "Supporting files for this skill are resolved relative to the skill directory.\n\n"
 
         return f"{header}{content}"
 
