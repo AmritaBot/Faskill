@@ -152,3 +152,41 @@ async def test_tool_errors_do_not_leak_paths(temp_skills_dir, skill_factory):
     assert isinstance(result, str)
     assert str(temp_skills_dir) not in result
     assert "ContentLoadError" in result
+
+
+@pytest.mark.integration
+@pytest.mark.requires_amrita
+async def test_script_activation_rolls_back_on_bad_tool_id(
+    temp_skills_dir, skill_factory, monkeypatch
+):
+    """A bad script tool ID leaves the pool untouched and still returns the body."""
+    from faskill.core.exceptions import ToolIDValidationError
+    from faskill.core.scripts import ScriptMetadata
+
+    directory = skill_factory("scripted", "Has scripts.", "# Scripted\n\nBody text.\n")
+    scripts = directory / "scripts"
+    scripts.mkdir()
+    (scripts / "ok.py").write_text('print("ok")\n', encoding="utf-8")
+    (scripts / "bad.py").write_text('print("bad")\n', encoding="utf-8")
+
+    manager = SkillContext(skill_dirs=[temp_skills_dir])
+    manager.discover()
+
+    original = ScriptMetadata.get_fully_qualified_name
+
+    def fake(self, skill_name: str) -> str:
+        if self.name == "bad":
+            raise ToolIDValidationError("bad id")
+        return original(self, skill_name)
+
+    monkeypatch.setattr(ScriptMetadata, "get_fully_qualified_name", fake)
+
+    tools = create_amrita_tools(manager, mode="progressive")
+    handler = tools.get_tool_func("skill_open")
+    assert handler is not None
+
+    result = await handler({"name": "scripted"})  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
+    assert "Body text." in result
+    assert "could not be activated" in result
+    assert len(tools.get_tools()) == 2

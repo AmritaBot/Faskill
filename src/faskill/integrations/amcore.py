@@ -364,6 +364,7 @@ def _register_skill_scripts(
     """
     skipped: list[str] = []
     skill_name = skill.metadata.name
+    pending: list[tuple[ToolFunctionSchema, Any]] = []
 
     for script in skill.scripts:
         if not _interpreter_available(script):
@@ -380,7 +381,20 @@ def _register_skill_scripts(
             description=tool_description,
             parameter_description=("Arguments to pass to the script via stdin as a JSON string"),
         )
-        _register_tool(tools_manager, schema, handler)
+        pending.append((schema, handler))
+
+    # Build every schema before touching the pool: an invalid tool ID then
+    # leaves it untouched instead of half-populated. Registration itself is
+    # rolled back for the same reason.
+    registered: list[str] = []
+    try:
+        for schema, handler in pending:
+            _register_tool(tools_manager, schema, handler)
+            registered.append(schema.function.name)
+    except Exception:
+        for name in registered:
+            tools_manager.remove_tool(name)
+        raise
 
     return skipped
 
@@ -411,7 +425,14 @@ def _activate_skill_scripts(
     except Exception:
         return ""
 
-    skipped = _register_skill_scripts(skill, manager, tools_manager)
+    try:
+        skipped = _register_skill_scripts(skill, manager, tools_manager)
+    except Exception:
+        logger.warning("Failed to activate script tools for skill %s", skill_name, exc_info=True)
+        return (
+            "\n\nNote: this skill's script tools could not be activated. "
+            "Read the script source and decide how to handle the task yourself."
+        )
     if not skipped:
         return ""
 
