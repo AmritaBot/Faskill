@@ -113,14 +113,14 @@ def process_skill_content(
         - ~1-5ms per invocation (dominated by string operations)
         - No file I/O, pure in-memory processing
     """
-    # The parameter stays in the signature for API compatibility; the hint no longer embeds the path.
+    # Kept for callers that pass it positionally.
     del base_dir
 
     # 1. Validate argument size (1MB limit)
     if arguments is not None and len(arguments.encode("utf-8")) > 1_000_000:
         raise SizeLimitExceededError("Arguments exceed maximum size of 1000000 bytes")
 
-    # 2. Prepend a model-facing resolution hint (no absolute paths, no developer API hints)
+    # 2. Prepend a path-free resolution hint
     result = "Supporting files for this skill are resolved relative to the skill directory.\n\n"
     result += content
 
@@ -184,7 +184,7 @@ class BaseDirectoryProcessor(ContentProcessor):
 
             # My Skill
         """
-        # Keep the model-facing header free of absolute paths and developer-facing API hints: only the resolution rule matters here. The context argument stays part of the processor interface.
+        # Path-free header; the context argument is unused here.
         del context
         header = "Supporting files for this skill are resolved relative to the skill directory.\n\n"
 

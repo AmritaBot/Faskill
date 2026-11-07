@@ -520,7 +520,7 @@ def _register_progressive_tools(
             return f"Skill '{name}' not found. Available skills: {available}"
         except Exception as exc:
             return f"Failed to open skill '{name}': {type(exc).__name__}: {exc}"
-        # Progressive disclosure L3: script tools become available once the skill is opened.
+        # L3: activate script tools once the skill is opened.
         note = _activate_skill_scripts(name, manager, tools)
         return f"{text}{note}"
 
