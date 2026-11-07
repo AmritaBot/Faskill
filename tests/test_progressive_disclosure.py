@@ -137,3 +137,100 @@ def test_open_skill_truncates(tmp_path: Path):
 def test_read_skill_resource_wrapper(context: SkillContext):
     text = context.read_skill_resource("pdf-tools", "scripts/run.py")
     assert 'print("hi")' in text
+
+
+def test_read_resource_rejects_private_paths(context: SkillContext):
+    """SKILL.md and dotted files stay out of reach, like the listing says."""
+    skill = context.load_skill("pdf-tools")
+    (skill.base_directory / ".env").write_text("SECRET=1", encoding="utf-8")
+
+    for path in ("SKILL.md", ".env", "references/../SKILL.md"):
+        with pytest.raises(ContentLoadError):
+            skill.read_resource(path)
+
+
+def test_list_resources_skips_symlinks_leaving_the_skill(context: SkillContext, tmp_path: Path):
+    """A file symlink pointing outside is not offered to the model."""
+    skill = context.load_skill("pdf-tools")
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret", encoding="utf-8")
+    link = skill.base_directory / "linked.txt"
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks are unavailable on this platform")
+
+    paths = [entry.relative_path for entry in skill.list_resources()]
+    assert "linked.txt" not in paths
+
+
+def test_read_resource_resumes_inside_a_long_line(context: SkillContext):
+    """A line cut by the byte budget is resumable through start_char."""
+    skill = context.load_skill("pdf-tools")
+    long_line = "x" * 400
+    (skill.base_directory / "long.txt").write_text(long_line, encoding="utf-8")
+
+    first = skill.read_resource("long.txt", max_bytes=200)
+    assert "start_char=" in first
+    head = first.split("\n")[0]
+    start_char = int(first.rsplit("start_char=", 1)[1].rstrip("]"))
+    assert start_char == len(head)
+
+    second = skill.read_resource("long.txt", max_bytes=200, start_char=start_char)
+    tail = second.split("\n")[0]
+    assert tail
+    assert long_line.startswith(head + tail)
+
+
+def test_section_slice_ignores_headings_in_fenced_code(tmp_path: Path):
+    """Heading-shaped lines inside a fence are content, not sections."""
+    body = (
+        "# Real\n\nIntro.\n\n"
+        "## Usage\n\n"
+        "```markdown\n## Not a section\ntext\n```\n\n"
+        "## Next\n\nEnd.\n"
+    )
+    _make_skill(tmp_path, name="fenced", body=body)
+    ctx = SkillContext(skill_dirs=[tmp_path])
+    ctx.discover()
+
+    usage = ctx.open_skill("fenced", section="Usage")
+    assert "Not a section" in usage
+    assert "## Next" not in usage
+
+    missing = ctx.open_skill("fenced", section="Not a section")
+    assert "Section not found" in missing
+
+
+def test_open_skill_bounds_the_file_listing(tmp_path: Path):
+    """The listing shares the character budget instead of growing past it."""
+    directory = _make_skill(tmp_path, name="many-files")
+    for index in range(40):
+        (directory / f"notes-{index:02d}.md").write_text("x", encoding="utf-8")
+    ctx = SkillContext(skill_dirs=[tmp_path])
+    ctx.discover()
+
+    text = ctx.open_skill("many-files", max_chars=700)
+    assert "not listed" in text or "listing omitted" in text
+    assert len(text) < 1200
+
+
+def test_open_skill_substitutes_empty_arguments(context: SkillContext):
+    """An empty request still clears the placeholder."""
+    text = context.open_skill("pdf-tools", arguments="")
+    assert "$ARGUMENTS" not in text
+
+
+def test_open_skill_rejects_oversized_arguments(context: SkillContext):
+    """The 1MB argument limit applies to progressive opens too."""
+    from faskill.core.exceptions import SizeLimitExceededError
+
+    with pytest.raises(SizeLimitExceededError):
+        context.open_skill("pdf-tools", arguments="x" * 1_000_001)
+
+
+def test_arguments_dollar_escape():
+    """``$$ARGUMENTS`` stays a literal token instead of being substituted."""
+    from faskill.core.processors import apply_arguments
+
+    assert apply_arguments("Use $$ARGUMENTS here", "q") == "Use $ARGUMENTS here"

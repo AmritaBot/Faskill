@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import shutil
 from typing import TYPE_CHECKING, Any, Dict, Literal
 
@@ -57,7 +58,7 @@ except ImportError as e:
         "Install with: pip install faskill[amrita]"
     ) from e
 
-from faskill.core.exceptions import SkillNotFoundError
+from faskill.core.exceptions import ConfigurationError, SkillNotFoundError
 
 if TYPE_CHECKING:
     from faskill.core.manager import SkillContext
@@ -65,6 +66,18 @@ if TYPE_CHECKING:
     from faskill.core.scripts import ScriptMetadata
 
 # Tool parameter name (aligned with the LangChain integration's SkillInput)
+logger = logging.getLogger(__name__)
+
+
+def _log_skill_failure(action: str, target: str, exc: BaseException) -> None:
+    """Log a skill failure with the exception text kept out of the tool result.
+
+    Exception messages from the resolver and the loader carry absolute paths;
+    the model only needs the failure kind, the operator gets the details here.
+    """
+    logger.warning("Failed to %s skill %s", action, target, exc_info=exc)
+
+
 _ARGUMENTS_PARAM = "arguments"
 
 # System-role prompt sections appended to the agent's system prompt (train) that teach the model when and how to call the registered skill/script tools, instead of repeating the guide in every tool description.
@@ -508,6 +521,15 @@ def _register_progressive_tools(
     names = [meta.name for meta in manager.list_skills(include_qualified=False)]
     available = ", ".join(names) if names else "(none)"
 
+    # The prompt names these two tools verbatim, so a collision must fail loudly
+    # instead of leaving an unrelated handler under the advertised name.
+    for tool_name in (f"{tool_prefix}skill_open", f"{tool_prefix}skill_read"):
+        if tools.has_tool(tool_name):
+            raise ConfigurationError(
+                f"Tool name '{tool_name}' is already registered; "
+                "choose another tool_prefix for faskill."
+            )
+
     async def open_skill(data: Dict[str, Any]) -> str:
         name = str(data.get("name") or "").strip()
         if not name:
@@ -519,7 +541,8 @@ def _register_progressive_tools(
         except SkillNotFoundError:
             return f"Skill '{name}' not found. Available skills: {available}"
         except Exception as exc:
-            return f"Failed to open skill '{name}': {type(exc).__name__}: {exc}"
+            _log_skill_failure("open", name, exc)
+            return f"Failed to open skill '{name}': {type(exc).__name__}"
         # L3: activate script tools once the skill is opened.
         note = _activate_skill_scripts(name, manager, tools)
         return f"{text}{note}"
@@ -532,14 +555,18 @@ def _register_progressive_tools(
         try:
             start = int(data.get("start_line") or 0)
             end = int(data.get("end_line") or 0)
+            char = int(data.get("start_char") or 0)
         except (TypeError, ValueError):
-            return "'start_line' and 'end_line' must be integers."
+            return "'start_line', 'end_line' and 'start_char' must be integers."
         try:
-            return await asyncio.to_thread(manager.read_skill_resource, name, path, start, end)
+            return await asyncio.to_thread(
+                manager.read_skill_resource, name, path, start, end, char
+            )
         except SkillNotFoundError:
             return f"Skill '{name}' not found. Available skills: {available}"
         except Exception as exc:
-            return f"Failed to read '{path}' from skill '{name}': {type(exc).__name__}: {exc}"
+            _log_skill_failure("read", f"{name}:{path}", exc)
+            return f"Failed to read '{path}' from skill '{name}': {type(exc).__name__}"
 
     open_schema = _build_tool_schema(
         name=f"{tool_prefix}skill_open",
@@ -578,6 +605,10 @@ def _register_progressive_tools(
             ),
             "end_line": FunctionPropertySchema(
                 type="integer", description="Exclusive last line; 0 reads to the end."
+            ),
+            "start_char": FunctionPropertySchema(
+                type="integer",
+                description="Character offset inside start_line, to resume a truncated line.",
             ),
         },
         required=["name", "path"],

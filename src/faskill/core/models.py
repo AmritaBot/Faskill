@@ -318,6 +318,18 @@ class ResourceEntry:
     is_script: bool = False
 
 
+def _is_private_relative(relative: Path) -> bool:
+    """Whether a skill-relative path must stay out of the model's view.
+
+    ``SKILL.md`` is matched case-insensitively so a case variant cannot leak
+    the frontmatter, and any dotted path component or ``__pycache__`` is
+    treated as internal.
+    """
+    if relative.as_posix().casefold() == "skill.md":
+        return True
+    return any(part.startswith(".") or part == "__pycache__" for part in relative.parts)
+
+
 def _strip_frontmatter(content: str) -> str:
     """Return the markdown body of a SKILL.md file without its YAML frontmatter."""
     from faskill.core.parser import SkillParser
@@ -525,7 +537,9 @@ class Skill:
         """List supporting files bundled with this skill.
 
         Hidden entries, ``__pycache__`` and ``SKILL.md`` itself are skipped so
-        the model only sees files it can actually read.
+        the model only sees files it can actually read. A file symlink whose
+        target leaves the skill directory is skipped as well, because
+        :meth:`read_resource` would refuse it.
 
         Args:
             max_depth: Maximum path depth relative to the skill directory.
@@ -537,27 +551,27 @@ class Skill:
         if not base.is_dir():
             return []
 
+        root = base.resolve()
         script_paths = {(base / script.path).resolve() for script in self.scripts}
         entries: list[ResourceEntry] = []
         for path in base.rglob("*"):
             if not path.is_file():
                 continue
             relative = path.relative_to(base)
-            if len(relative.parts) > max_depth:
-                continue
-            if relative.as_posix() == "SKILL.md":
-                continue
-            if any(part.startswith(".") or part == "__pycache__" for part in relative.parts):
+            if len(relative.parts) > max_depth or _is_private_relative(relative):
                 continue
             try:
-                size = path.stat().st_size
+                resolved = path.resolve()
+                if not resolved.is_relative_to(root):
+                    continue
+                size = resolved.stat().st_size
             except OSError:
                 continue
             entries.append(
                 ResourceEntry(
                     relative_path=relative.as_posix(),
                     size=size,
-                    is_script=path.resolve() in script_paths,
+                    is_script=resolved in script_paths,
                 )
             )
         return sorted(entries, key=lambda entry: entry.relative_path)
@@ -569,21 +583,28 @@ class Skill:
         end_line: int = 0,
         *,
         max_bytes: int = 32768,
+        start_char: int = 0,
     ) -> str:
         """Read a supporting file inside the skill directory.
+
+        The file is streamed line by line, so a large resource never has to fit
+        in memory at once. Reads stop at a line boundary once the byte budget is
+        spent; a single line longer than the budget is cut inside the line and
+        the hint names ``start_char`` so the rest can be resumed.
 
         Args:
             relative_path: Path relative to the skill directory.
             start_line: Zero-based first line to return.
             end_line: Exclusive last line; 0 means "until the end".
             max_bytes: Hard cap on the returned text size.
+            start_char: Character offset inside ``start_line`` to resume from.
 
         Returns:
             The requested text, with a continuation hint when truncated.
 
         Raises:
             PathSecurityError: If the path escapes the skill directory.
-            ContentLoadError: If the file is missing or binary.
+            ContentLoadError: If the file is missing, private or binary.
         """
         from faskill.core.exceptions import ContentLoadError
         from faskill.core.path_resolver import FilePathResolver
@@ -592,35 +613,78 @@ class Skill:
         if not path.is_file():
             raise ContentLoadError(f"Resource not found: {relative_path}")
 
+        root = self.base_directory.resolve()
         try:
-            raw = path.read_bytes()
-        except OSError as exc:
-            raise ContentLoadError(f"Cannot read resource: {relative_path}") from exc
+            relative = path.resolve().relative_to(root)
+        except ValueError as exc:
+            raise ContentLoadError(f"Resource not found: {relative_path}") from exc
+        if _is_private_relative(relative):
+            raise ContentLoadError(f"Resource not found: {relative_path}")
 
-        if b"\x00" in raw[:8192]:
-            raise ContentLoadError(
-                f"Resource is binary and cannot be read as text: {relative_path}"
-            )
-
-        lines = raw.decode("utf-8-sig", errors="replace").splitlines()
-        total = len(lines)
+        # Reserve room for the continuation hint so the result stays within
+        # ``max_bytes`` even when it is truncated.
+        budget = max(max_bytes - 160, 1)
         start = max(start_line, 0)
-        if start >= total:
-            return f"(no content at line {start}; file has {total} lines)"
+        stop = end_line if end_line > 0 else None
+        offset = max(start_char, 0)
 
-        stop = total if end_line <= 0 else min(end_line, total)
-        chunk = "\n".join(lines[start:stop])
+        collected: list[str] = []
+        used = 0
+        total = 0
+        resume: tuple[int, int | None] | None = None
+        reached_end = False
 
-        encoded = chunk.encode("utf-8")
-        if len(encoded) > max_bytes:
-            chunk = encoded[:max_bytes].decode("utf-8", errors="ignore")
-            return (
-                f"{chunk}\n\n[truncated at {max_bytes} bytes; "
-                f"{total} lines total, continue with start_line={stop}]"
+        try:
+            with path.open("r", encoding="utf-8-sig", errors="strict", newline="") as handle:
+                for index, raw_line in enumerate(handle):
+                    total = index + 1
+                    line = raw_line.rstrip("\n").rstrip("\r")
+                    if "\x00" in line:
+                        raise ContentLoadError(
+                            f"Resource is binary and cannot be read as text: {relative_path}"
+                        )
+                    if resume is not None or reached_end:
+                        continue
+                    if index < start:
+                        continue
+                    if stop is not None and index >= stop:
+                        reached_end = True
+                        continue
+                    if index == start and offset:
+                        line = line[offset:]
+                    cost = len(line.encode("utf-8")) + 1
+                    if used + cost > budget:
+                        room = max(budget - used - 1, 0)
+                        if not collected and room > 0:
+                            head = line.encode("utf-8")[:room].decode("utf-8", errors="ignore")
+                            collected.append(head)
+                            resume = (index, offset + len(head))
+                        else:
+                            resume = (index, offset if index == start else None)
+                        continue
+                    collected.append(line)
+                    used += cost
+        except UnicodeDecodeError as exc:
+            raise ContentLoadError(f"Resource is not valid UTF-8 text: {relative_path}") from exc
+
+        body = "\n".join(collected)
+        if resume is not None:
+            line_index, char_index = resume
+            hint = f"continue with start_line={line_index}"
+            if char_index is not None:
+                hint += f", start_char={char_index}"
+            note = f"[truncated at {budget} bytes; {hint}]"
+            return f"{body}\n\n{note}" if body else note
+        if reached_end:
+            last = start + len(collected) - 1
+            note = (
+                f"[lines {start}-{last} of {total}; "
+                f"continue with start_line={start + len(collected)}]"
             )
-        if stop < total:
-            return f"{chunk}\n\n[lines {start}-{stop} of {total}; continue with start_line={stop}]"
-        return chunk
+            return f"{body}\n\n{note}" if body else note
+        if not collected:
+            return f"(no content at line {start}; file has {total} lines)"
+        return body
 
     @property
     def scripts(self) -> "list[ScriptMetadata]":

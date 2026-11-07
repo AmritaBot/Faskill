@@ -29,6 +29,7 @@ from faskill.core.models import (
     SourceType,
 )
 from faskill.core.parser import SkillParser
+from faskill.core.processors import apply_arguments
 from faskill.core.registry import SkillRegistry
 
 logger = logging.getLogger(__name__)
@@ -226,10 +227,7 @@ class SkillContext:
             A model-facing text block.
         """
         skill = self.load_skill(name)
-        body = skill.body
-        has_placeholder = "$ARGUMENTS" in body
-        if arguments and has_placeholder:
-            body = body.replace("$ARGUMENTS", arguments)
+        body = apply_arguments(skill.body, arguments, append_label="[user request]")
 
         text = body
         if section:
@@ -257,16 +255,31 @@ class SkillContext:
             if headings:
                 parts.append("Sections:\n" + "\n".join(headings))
 
-        if arguments and not has_placeholder:
-            parts.append(f"[user request]\n{arguments}")
-
         resources = skill.list_resources()
         if resources:
-            lines = ["[files in this skill; read with skill_read]"]
-            for entry in resources:
-                marker = " (script)" if entry.is_script else ""
-                lines.append(f"- {entry.relative_path} ({_human_size(entry.size)}){marker}")
-            parts.append("\n".join(lines))
+            header = "[files in this skill; read with skill_read]"
+            entries = [
+                f"- {entry.relative_path} ({_human_size(entry.size)})"
+                + (" (script)" if entry.is_script else "")
+                for entry in resources
+            ]
+            used = sum(len(part) for part in parts) + len(header)
+            listing: list[str] = []
+            if used <= max_chars:
+                for entry in entries:
+                    if used + len(entry) + 1 > max_chars:
+                        break
+                    listing.append(entry)
+                    used += len(entry) + 1
+                block = "\n".join([header, *listing])
+                omitted = len(entries) - len(listing)
+                if omitted:
+                    block += f"\n[{omitted} more file(s) not listed]"
+                parts.append(block)
+            else:
+                parts.append(
+                    f"[{len(entries)} supporting files; listing omitted at the size limit]"
+                )
 
         return "\n\n".join(part for part in parts if part)
 
@@ -276,10 +289,11 @@ class SkillContext:
         relative_path: str,
         start_line: int = 0,
         end_line: int = 0,
+        start_char: int = 0,
     ) -> str:
         """Read a supporting file of a skill (progressive disclosure L3)."""
         skill = self.load_skill(name)
-        return skill.read_resource(relative_path, start_line, end_line)
+        return skill.read_resource(relative_path, start_line, end_line, start_char=start_char)
 
     # Invocation
 
@@ -404,7 +418,7 @@ class SkillContext:
 
     def _do_discover(self) -> None:
         logger.info("Starting skill discovery (sync)")
-        self._registry.clear()
+        registry = SkillRegistry()
         total = 0
 
         for src in self._sources:
@@ -416,13 +430,14 @@ class SkillContext:
             for sf in skill_files:
                 try:
                     metadata = self._parser.parse_skill_file(sf)
-                    if self._registry.register(metadata, src, self._sources):
+                    if registry.register(metadata, src, self._sources):
                         total += 1
                 except SkillsUseError as e:
                     logger.error("Failed to parse skill at %s: %s", sf, e, exc_info=True)
                 except Exception as e:
                     logger.error("Unexpected error parsing %s: %s", sf, e, exc_info=True)
 
+        self._registry = registry
         logger.info(
             "Discovery complete: %d skill(s) from %d source(s)",
             total,
@@ -431,7 +446,7 @@ class SkillContext:
 
     async def _ado_discover(self) -> None:
         logger.info("Starting skill discovery (async)")
-        self._registry.clear()
+        registry = SkillRegistry()
         total = 0
 
         for src in self._sources:
@@ -443,13 +458,14 @@ class SkillContext:
             for sf in skill_files:
                 try:
                     metadata = self._parser.parse_skill_file(sf)
-                    if self._registry.register(metadata, src, self._sources):
+                    if registry.register(metadata, src, self._sources):
                         total += 1
                 except SkillsUseError as e:
                     logger.error("Failed to parse skill at %s: %s", sf, e, exc_info=True)
                 except Exception as e:
                     logger.error("Unexpected error parsing %s: %s", sf, e, exc_info=True)
 
+        self._registry = registry
         logger.info(
             "Async discovery complete: %d skill(s) from %d source(s)",
             total,
@@ -475,17 +491,50 @@ def _detect_plugin(
 
 
 _HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+_FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,}).*$", re.MULTILINE)
+
+
+def _fenced_spans(text: str) -> list[tuple[int, int]]:
+    """Character spans covered by fenced code blocks."""
+    spans: list[tuple[int, int]] = []
+    opened: int | None = None
+    for match in _FENCE_RE.finditer(text):
+        if opened is None:
+            opened = match.start()
+        else:
+            spans.append((opened, match.end()))
+            opened = None
+    if opened is not None:
+        spans.append((opened, len(text)))
+    return spans
+
+
+def _outside_fences(position: int, spans: list[tuple[int, int]]) -> bool:
+    """Whether a position is outside every fenced code block."""
+    return all(position < start or position >= end for start, end in spans)
 
 
 def _list_headings(text: str) -> list[str]:
-    """Return at most 40 markdown headings from ``text``."""
-    return [f"{match.group(1)} {match.group(2)}" for match in _HEADING_RE.finditer(text)][:40]
+    """Return at most 40 markdown headings from ``text``.
+
+    Heading-shaped lines inside fenced code blocks are ignored, so an example
+    snippet does not show up as a real section.
+    """
+    spans = _fenced_spans(text)
+    return [
+        f"{match.group(1)} {match.group(2)}"
+        for match in _HEADING_RE.finditer(text)
+        if _outside_fences(match.start(), spans)
+    ][:40]
 
 
 def _slice_section(text: str, section: str) -> str | None:
     """Return the section under ``section`` (case-insensitive, partial match)."""
     target = section.strip().lstrip("#").strip().lower()
-    matches = list(_HEADING_RE.finditer(text))
+    spans = _fenced_spans(text)
+    matches = [
+        match for match in _HEADING_RE.finditer(text) if _outside_fences(match.start(), spans)
+    ]
     for index, match in enumerate(matches):
         title = match.group(2).strip().lower()
         if title != target and target not in title:

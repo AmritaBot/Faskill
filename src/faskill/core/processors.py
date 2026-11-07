@@ -68,6 +68,45 @@ def normalize_arguments(arguments: str | None) -> str:
     return normalized
 
 
+def apply_arguments(
+    content: str,
+    arguments: str | None,
+    *,
+    append_label: str = "ARGUMENTS",
+) -> str:
+    """Apply ``$ARGUMENTS`` substitution with the shared size limit.
+
+    ``$$ARGUMENTS`` escapes to a literal ``$ARGUMENTS``, so a skill can show
+    the token in its instructions. An empty argument still replaces a present
+    placeholder, which keeps the raw token out of the model's view.
+
+    Args:
+        content: Skill body, without frontmatter.
+        arguments: User request; ``None`` means "no substitution at all".
+        append_label: Heading used when the body has no placeholder.
+
+    Returns:
+        The content with arguments applied.
+
+    Raises:
+        SizeLimitExceededError: If the arguments exceed 1MB.
+    """
+    if arguments is not None and len(arguments.encode("utf-8")) > 1_000_000:
+        raise SizeLimitExceededError("Arguments exceed maximum size of 1000000 bytes")
+
+    if arguments is None:
+        return content
+
+    if "$ARGUMENTS" in content:
+        escaped = content.replace("$$ARGUMENTS", "\x00ARGUMENTS_ESCAPE\x00")
+        escaped = escaped.replace("$ARGUMENTS", arguments)
+        return escaped.replace("\x00ARGUMENTS_ESCAPE\x00", "$ARGUMENTS")
+
+    if arguments:
+        return f"{content}\n\n{append_label}: {arguments}"
+    return content
+
+
 def process_skill_content(
     content: str,
     base_dir: Path,
@@ -116,27 +155,12 @@ def process_skill_content(
     # Kept for callers that pass it positionally.
     del base_dir
 
-    # 1. Validate argument size (1MB limit)
-    if arguments is not None and len(arguments.encode("utf-8")) > 1_000_000:
-        raise SizeLimitExceededError("Arguments exceed maximum size of 1000000 bytes")
-
-    # 2. Prepend a path-free resolution hint
+    # 1. Prepend a path-free resolution hint
     result = "Supporting files for this skill are resolved relative to the skill directory.\n\n"
     result += content
 
-    # 3. Handle arguments
-    if arguments is None:
-        return result  # No arguments provided
-
-    if "$ARGUMENTS" in result:
-        # Replace all $ARGUMENTS placeholders (including empty string)
-        return result.replace("$ARGUMENTS", arguments)
-    elif arguments:  # Non-empty after normalization
-        # Append arguments
-        return f"{result}\n\nARGUMENTS: {arguments}"
-    else:
-        # Empty arguments, no placeholder
-        return result
+    # 2. Apply arguments through the shared helper (size limit included)
+    return apply_arguments(result, arguments)
 
 
 class ContentProcessor(ABC):

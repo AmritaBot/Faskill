@@ -116,3 +116,39 @@ def test_usage_prompt_points_to_progressive_tools(temp_skills_dir, skill_factory
     assert "skill_read" in prompt
     assert "pdf-tools: Extract and merge PDFs." in prompt
     assert "$ARGUMENTS" not in prompt
+
+
+@pytest.mark.integration
+@pytest.mark.requires_amrita
+def test_tool_name_collision_is_reported(temp_skills_dir, skill_factory):
+    """A pre-occupied skill_open name fails loudly instead of misrouting."""
+    from amrita_core.tools.manager import MultiToolsManager
+
+    from faskill.core.exceptions import ConfigurationError
+    from faskill.integrations.amcore import _build_arguments_schema, _register_tool
+
+    manager = _context(temp_skills_dir, skill_factory)
+    tools = MultiToolsManager()
+    _register_tool(
+        tools,
+        _build_arguments_schema(name="skill_open", description="Occupied"),
+        lambda data: "other",
+    )
+
+    with pytest.raises(ConfigurationError):
+        create_amrita_tools(manager, tools_manager=tools, copy=False, mode="progressive")
+
+
+@pytest.mark.integration
+@pytest.mark.requires_amrita
+async def test_tool_errors_do_not_leak_paths(temp_skills_dir, skill_factory):
+    """Failure text names the error type, never the host path."""
+    manager = _context(temp_skills_dir, skill_factory)
+    tools = create_amrita_tools(manager, mode="progressive")
+    handler = tools.get_tool_func("skill_read")
+    assert handler is not None
+
+    result = await handler({"name": "pdf-tools", "path": "missing.md"})  # pyright: ignore[reportArgumentType]
+    assert isinstance(result, str)
+    assert str(temp_skills_dir) not in result
+    assert "ContentLoadError" in result
